@@ -1,29 +1,30 @@
 clear all;
-%%
-Res = 1; % Resolution factor. 1 = 1um/square. 2 = .5 um/square, etc.
-X_length = 4800; % Size of work area. Must be divisible by 3 & 5 (Number of pads in X,Y)
-Y_length = 4800;
+
+%% Initial Condition Parameters
+sx = 4800; % Size of work area. Must be divisible by 3 & 5 (Number of pads in X,Y)
+sy = 4800;
 NeuronRadii = 5; % in micrometers
 Neuron_spacing = 40; % micrometers seperation of neurons. Too large a value can cause errors
+Electroderadii = 10;
 Num_Stim = 5; % Number of stimulations in present in matrix area
 T = 1; % Duration of experiment in seconds
-dt = T/1000;
+dt = T/1000; % Time step length
 I0 = 100; % Amps of current injected
-sx = X_length*Res;
-sy = Y_length*Res;
 Mx = 200; % Motif X length
 My = 200; % Motif Y Length
 NumNeuronsMotif = 5; % # Neuron in Motif. Must be multiples of 5 to satisfy ratio. Every 1st neuron is Inhibitory
-NumMotifs = 120; % Number of motifs
+NumMotifs = 195; % Number of motifs
 NumNeurons = NumMotifs*NumNeuronsMotif;
-NumPadsX = 5; % Number of pads to divide X_Length
-NumPadsY = 3;
+NumPadsX = 5; % Number of pads in X Direction
+NumPadsY = 3; % Number of pads in Y direction
 NumPads = NumPadsX*NumPadsY; % Total number of pads in area
 NumMotifsPerPad = NumMotifs/NumPads; % Number of motifs per pad
 PadsXLength = X_length/NumPadsX; % Length of a X pad
 PadsYLength = Y_length/NumPadsY; % Length of a Y pad
 Inhibitory_Factor = .01; % 0 to 1 Greater factor will inhibit RS neurons more
 Inhibitory_Oscillatory_Percentage = .33; % Percentage of inhibitory neurons which oscillate
+theta_threshold = 45; % angle difference threshold - If the neuron axon is out of phase by at least this much to the current-stimulus, the electric field acting on the neuron is weakened to 25%.
+
 
 %% Neuron Definitions
 
@@ -126,7 +127,6 @@ end
 
 %% Stimulation Locations Matrix
 
-Electroderadii = 10;
 ElectrodeX = []; ElectrodeY = [];
 for i = 1:10 % Number of electrodes = 100, 10x10 over 4mm in center of map. Does not create an electrode at percent center!
     for j = 1:10
@@ -240,7 +240,6 @@ elseif Axon_Direction(i) == 3 % (right = 0 degrees)
 elseif Axon_Direction(i) == 4 % (down, = -90 or 270 degrees)
     Axon_Direction_Theta(i) = -90;
 end
-theta_threshold = 45; % angle difference maximum
 
 for i = 1:NumNeurons
     x2 = NeuronX(i);
