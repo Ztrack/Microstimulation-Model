@@ -9,7 +9,7 @@ Inhibitory_Factor = .01; % 0 to 1 Greater factor will inhibit RS neurons more
 theta_threshold = 45; % angle difference threshold - If the neuron axon is out of phase by at least this much to the current-stimulus, the electric field acting on the neuron is weakened to 25%.
 
 % Population Properties
-NumNeurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
+NumNeurons = 500; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
 Excitatory_Inhibitory_Ratio = 1/4; % % Number of Inhibitory / Excitatory Neurons in a motif
 NumNeuronsMotif = 5;
 NumMotifs = NumNeurons/NumNeuronsMotif; % # Neuron in Motif.
@@ -102,7 +102,7 @@ for i = 1:NumPads
     end
 end
 
-ii = 1; ClosestMotif = 0; MinimumMotifDistance = 100;
+ii = 1; ClosestMotif = 0; MinimumMotifDistance = 200;
 for i = 1:NumMotifs
     
     motif.pad(i) = ii;
@@ -195,6 +195,36 @@ for i = 1:NumMotifs
     end
 end
 
+% Rotate motifs some radom direction using rotation matrix
+
+for i = 1:NumMotifs
+    x = find(neuron.motif == i); % Neurons within this motif
+    theta = motif.orientation(i)*90; % Degree we are rotating by
+    for ii = 1:length(x)
+        % For neuron points, we need to calculate the x,y with respect to
+        % the centerpoint
+        x1 = motif.center.x(i)-neuron.x(x(ii));
+        y1 = motif.center.y(i)-neuron.y(x(ii));
+        x2 = motif.center.x(i) + x1*cosd(theta)-y1*sind(theta); % Transform x deg
+        y2 = motif.center.y(i) + x1*sind(theta)+y1*cosd(theta); % Transform x deg
+        
+        neuron.x(x(ii)) = x2;
+        neuron.y(x(ii)) = y2;
+        
+        if neuron.type(x(ii)) == 1 % Now we rotate the axon indices
+            [y3,x3] = ind2sub([sy sx],neuron.number(x(ii)).indices.axon); % Converts indices to x,y. returns rows,columns
+            x3 = motif.center.x(i) - x3;
+            y3 = motif.center.y(i) - y3;
+            x2 = motif.center.x(i) + x3*cosd(theta)-y3*sind(theta); % Transform x deg
+            y2 = motif.center.y(i) + x3*sind(theta)+y3*cosd(theta); % Transform x deg
+            ind = sub2ind([sy sx],y2,x2);
+            
+            neuron.number(x(ii)).indices.axon = ind; % Converts x,y back to indices for storage
+            
+        end
+    end
+end
+
 %% Stimulation Locations Matrix
 
 electrode.x = []; electrode.y = [];
@@ -223,7 +253,6 @@ I0_Axon_Neurons = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area com
 for i = 1:NumNeurons
     I0_Axon_Neurons1 = zeros(1,length(electrode.x));
     I0_Soma_Neurons1 = zeros(1,length(electrode.x));
-    neuron.number(i).indices.soma = {sub2ind([sx sy],neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii)};
     
     if neuron.type(i) == 1
         neuron.number(i).direction = motif.orientation(neuron.motif(i)); % Sets stored value for inhibitory axon direction
@@ -236,8 +265,8 @@ for i = 1:NumNeurons
         neuron.number(i).direction = randi([1,4],1,1); % 1 = x value down (left),2 = Y value down (up), 3 = X value up (right), 4 = Y value up (down)
         re = [0,0,0,0]; re(neuron.number(i).direction) = 1; % Random element selection to choose orientation of axon
         rl = randi([50+neuron.radii,480+neuron.radii],1); % Random length of axon + neuron.radii
-        xc = [neuron.x(i)+(re(3)*neuron.radii)-(re(1)*neuron.radii) neuron.x(i)+(re(3)*rl)-(re(1)*rl)]; % x coordinates
-        yc = [neuron.y(i)+(re(4)*neuron.radii)-(re(2)*neuron.radii) neuron.y(i)+(re(4)*rl)-(re(2)*rl)]; % y coordinates
+        xc = [neuron.x(i)+(re(3)*neuron.radii)-(re(1)*neuron.radii) neuron.x(i)+(re(3)*rl)-(re(1)*rl)]; % x coordinates of neuron, axon point
+        yc = [neuron.y(i)+(re(4)*neuron.radii)-(re(2)*neuron.radii) neuron.y(i)+(re(4)*rl)-(re(2)*rl)]; % y coordinates of neuron, axon point
         if xc(2) <= 0 % Simple filter Makes sure the axon end does not go out of bounds in x
             xc(2) = 1;
         elseif xc(2) >= sx
@@ -284,16 +313,19 @@ end
 %     neuron.number(Neuron_Connected(i,2)).i0.motion = neuron.number(Neuron_Connected(i,2)).i0.motion + I0_Motion_Neuron_Connections(i,:);
 % end
 
-Axon_Inhibitory_matrix = zeros(sx,sy);
-Axon_Excitatory_matrix = zeros(sx,sy);
+Soma_Matrix = zeros(sx,sy);
+Axon_Inhibitory_Matrix = zeros(sx,sy);
+Axon_Excitatory_Matrix = zeros(sx,sy);
 for i = 1:NumNeurons
     if neuron.type(i) == 1
-        Axon_Inhibitory_matrix(neuron.number(i).indices.axon) = 1; % Builds excitatory axon matrix
+        Axon_Inhibitory_Matrix(neuron.number(i).indices.axon) = 1; % Builds excitatory axon matrix
     else
-        Axon_Excitatory_matrix(neuron.number(i).indices.axon) = 1; % Builds excitatory axon matrix
+        Axon_Excitatory_Matrix(neuron.number(i).indices.axon) = 1; % Builds excitatory axon matrix
     end
+    Soma_Matrix(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii,neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
 end
-
+Soma_Matrix(Soma_Matrix>1) = 1;
+imagesc(Soma_Matrix+Axon_Excitatory_Matrix+Axon_Inhibitory_Matrix)
 
 
 currentmult = zeros(NumNeurons,length(electrode.x));

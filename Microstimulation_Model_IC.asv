@@ -164,7 +164,6 @@ for i = 1:NumNeurons
 end
 
 % Create neuron.axon for inhibitory neurons
-neuron.number.indices.axon = {};
 
 for i = 1:NumMotifs
     axonmap = zeros(sx,sy); % reset axonmap
@@ -189,10 +188,37 @@ for i = 1:NumMotifs
         axonmap(lindex) = 1;
     end
     
-    motif.axon = find(axonmap == 1); % Creates motif.axon, the inhibitory hub connection
     for ii = 1:length(x)
         if neuron.type(x(ii)) == 1
-            neuron.number.indices.axon = motif.axon;
+            neuron.number(x(ii)).indices.axon = find(axonmap == 1);
+        end
+    end
+end
+
+% Rotate motifs some radom direction using rotation matrix
+
+for i = 1:NumMotifs
+    x = find(neuron.motif == i); % Neurons within this motif
+    theta = motif.orientation(i)*90; % Degree we are rotating by
+    for ii = 1:length(x)
+        % For neuron points, we need to calculate the x,y with respect to
+        % the centerpoint
+        x1 = motif.center.x(i)-neuron.x(x(ii));
+        y1 = motif.center.y(i)-neuron.y(x(ii));
+        x2 = motif.center.x(i) + x1*cosd(theta)-y1*sind(theta); % Transform x deg
+        y2 = motif.center.y(i) + x1*sind(theta)+y1*cosd(theta); % Transform x deg
+        
+        neuron.x(x(ii)) = x2;
+        neuron.y(x(ii)) = y2;
+        
+        if neuron.type(x(ii)) == 1 % Now we rotate the axon indices
+            [y3,x3] = ind2sub([sy sx],neuron.number(x(ii)).indices.axon); % Converts indices to x,y
+            x2 = x3*cosd(theta)-y3*sind(theta); % Transform x deg
+            y2 = x3*sind(theta)+y3*cosd(theta); % Transform x deg
+            ind = sub2ind([sy sx],sy,sx);
+            
+            neuron.number(x(ii)).indices.axon = ind; % Converts x,y back to indices for storage
+            
         end
     end
 end
@@ -219,8 +245,8 @@ end
 
 %% Neuron And Axon Area Summation
 
-neuron.number.i0.soma = zeros(NumNeurons,length(electrode.x));
-neuron.number.i0.axon = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
+I0_Soma_Neurons = zeros(NumNeurons,length(electrode.x));
+I0_Axon_Neurons = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
 
 for i = 1:NumNeurons
     I0_Axon_Neurons1 = zeros(1,length(electrode.x));
@@ -261,8 +287,8 @@ for i = 1:NumNeurons
         end
         
     end
-    neuron.number(i).i0.axon = I0_Axon_Neurons1;
-    neuron.number(i).i0.soma = I0_Soma_Neurons1;
+    I0_Axon_Neurons(i,:) = I0_Axon_Neurons1;
+    I0_Soma_Neurons(i,:) = I0_Soma_Neurons1;
 end
 
 % Axon Generation for motion-tuned neural connections
@@ -288,11 +314,17 @@ end
 
 Axon_Inhibitory_matrix = zeros(sx,sy);
 Axon_Excitatory_matrix = zeros(sx,sy);
-fori
-Axon_Excitatory_matrix(neuron.number(neuron.excitatory).indices.axon) = 1; % Builds excitatory axon matrix
-Axon_Inhibitory_matrix(neuron.number(neuron.inhibitory).indices.axon) = 1; % Builds excitatory axon matrix
+for i = 1:NumNeurons
+    if neuron.type(i) == 1
+        Axon_Inhibitory_matrix(neuron.number(i).indices.axon) = 1; % Builds excitatory axon matrix
+    else
+        Axon_Excitatory_matrix(neuron.number(i).indices.axon) = 1; % Builds excitatory axon matrix
+    end
+end
 
-neuron.number.currentmult = zeros(NumNeurons,length(electrode.x));
+
+
+currentmult = zeros(NumNeurons,length(electrode.x));
 Axon_Direction_Theta = zeros(NumNeurons,1);
 for i = 1:NumNeurons
     if neuron.number(i).direction == 1 %(left = 180 degrees)
@@ -319,9 +351,9 @@ for i = 1:NumNeurons
         absDiffDeg = min(360-normDeg, normDeg);
         
         if absDiffDeg < theta_threshold % If angle meets critera then:
-            neuron.number(i).currentmult(ii) = 1; % Stores directional current multiplier as full
+            currentmult(i,ii) = 1; % Stores directional current multiplier as full
         else % If angle is not within criteria
-            neuron.number(i).currentmult(ii) = 0.25; % Stores current summation as depreciated
+            currentmult(i,ii) = 0.25; % Stores current summation as depreciated
         end
     end
 end
