@@ -1,4 +1,4 @@
-clear all;
+clear all; clc;
 
 %% Initial Condition Parameters
 
@@ -11,8 +11,8 @@ theta_threshold = 45; % angle difference threshold - If the neuron axon is out o
 % Population Properties
 NumNeurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
 Excitatory_Inhibitory_Ratio = 1/4; % % Number of Inhibitory / Excitatory Neurons in a motif
-NumNeuronsPerMotif = 5;
-NumMotifs = NumNeurons/NumNeuronsPerMotif; % # Neuron in Motif.
+NumNeuronsMotif = 5;
+NumMotifs = NumNeurons/NumNeuronsMotif; % # Neuron in Motif.
 Inhibitory_Oscillatory_Percentage = .33; % Percentage of inhibitory neurons which oscillate
 NeuronMotionRatio = 0.2; % Ratio of Motion Neurons to non-motion neurons. based on population of excitatory neurons
 
@@ -32,7 +32,6 @@ dt = T/1000; % Time step length
 
 %% Neuron Definitions
 
-neuron.number = 1:NumNeurons;
 neuron.type = repmat([1,2,2,2,2],1,NumMotifs); % Defines what type of neuron this number is. Inhibitory =1, Excitatory = 2
 neuron.motif = repmat(1:1:NumMotifs,NumNeuronsMotif,1); neuron.motif = neuron.motif(:)'; % Defines which motif the neuron belongs to
 neuron.inhibitory = find(neuron.type == 1); % Array with all inhibitory neurons
@@ -229,26 +228,26 @@ neuron.number.direction(neuron.inhibitory) = motif.orientation; % Sets stored va
 
 neuron.number.indices.soma = {};
 for i = 1:NumNeurons
-    neuron.number(i).indices.soma = {sub2ind([sx sy],NeuronX(i)-NeuronRadii:NeuronX(i)+NeuronRadii,NeuronY(i)-NeuronRadii:NeuronY(i)+NeuronRadii)};
+    neuron.number(i).indices.soma = {sub2ind([sx sy],neuron.x(i)-NeuronRadii:neuron.x(i)+NeuronRadii,neuron.y(i)-NeuronRadii:neuron.y(i)+NeuronRadii)};
 end
 
 for i = 1:NumNeurons
     I0_Axon_Neurons1 = zeros(1,length(electrode.x));
     I0_Soma_Neurons1 = zeros(1,length(electrode.x));
     if neuron.type(i) == 1
-        x = MotifX(Neuron_Motif(i))-length(Neuron_Loc)/2:MotifX(Neuron_Motif(i))+length(Neuron_Loc)/2-1; % Location of motif does not change with Orientation
-        y = MotifY(Neuron_Motif(i))-length(Neuron_Loc)/2:MotifY(Neuron_Motif(i))+length(Neuron_Loc)/2-1;
+        x = motif.center.x(neuron.motif(i))-length(Neuron_Loc)/2:motif.center.x(neuron.motif(i))+length(Neuron_Loc)/2-1; % Location of motif does not change with Orientation
+        y = motif.center.y(neuron.motif(i))-length(Neuron_Loc)/2:motif.center.y(neuron.motif(i))+length(Neuron_Loc)/2-1;
         lindex = find(Axon_Inhibitory_matrix(y,x)==1);
         for j = 1:length(electrode.x)
             I0_Axon_Neurons1(j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % sums all inhibitory axon current feedback
-            I0_Soma_Neurons1(j) = sum(sum(1./Stim_Distance_Map(j,NeuronY(i)-NeuronRadii:NeuronY(i)+NeuronRadii, NeuronX(i)-NeuronRadii:NeuronX(i)+NeuronRadii).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
+            I0_Soma_Neurons1(j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-NeuronRadii:neuron.y(i)+NeuronRadii, neuron.x(i)-NeuronRadii:neuron.x(i)+NeuronRadii).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
         end
         
     elseif neuron.type(i) == 2 % Creating a new axon matrix for Excitatory neurons. Must be made one at a time to calculate current effect on every neuron
         re = [0,0,0,0]; re(neuron.number(i).direction) = 1; % Random element selection to choose orientation of axon
         rl = randi([50+NeuronRadii,480+NeuronRadii],1); % Random length of axon + NeuronRadii
-        xc = [NeuronX(i)+(re(3)*NeuronRadii)-(re(1)*NeuronRadii) NeuronX(i)+(re(3)*rl)-(re(1)*rl)]; % x coordinates
-        yc = [NeuronY(i)+(re(4)*NeuronRadii)-(re(2)*NeuronRadii) NeuronY(i)+(re(4)*rl)-(re(2)*rl)]; % y coordinates
+        xc = [neuron.x(i)+(re(3)*NeuronRadii)-(re(1)*NeuronRadii) neuron.x(i)+(re(3)*rl)-(re(1)*rl)]; % x coordinates
+        yc = [neuron.y(i)+(re(4)*NeuronRadii)-(re(2)*NeuronRadii) neuron.y(i)+(re(4)*rl)-(re(2)*rl)]; % y coordinates
         if xc(2) <= 0 % Simple filter Makes sure the axon end does not go out of bounds in x
             xc(2) = 1;
         elseif xc(2) >= sx
@@ -265,7 +264,7 @@ for i = 1:NumNeurons
         lindex = sub2ind([sx sy], rIndex,cIndex); % Linear indices
         for j = 1:length(electrode.x)
             I0_Axon_Neurons1(j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % Stores information on the axon morphology to calculate current backpropogation
-            I0_Soma_Neurons1(j) = sum(sum(1./Stim_Distance_Map(j,NeuronY(i)-NeuronRadii:NeuronY(i)+NeuronRadii, NeuronX(i)-NeuronRadii:NeuronX(i)+NeuronRadii).^2)); % Summation 1/r^2 area component of soma
+            I0_Soma_Neurons1(j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-NeuronRadii:neuron.y(i)+NeuronRadii, neuron.x(i)-NeuronRadii:neuron.x(i)+NeuronRadii).^2)); % Summation 1/r^2 area component of soma
         end
         
     end
@@ -278,8 +277,8 @@ end
 I0_Motion_Neuron_Connections = zeros(length(Neuron_Connected),length(electrode.x));
 for i = 1:length(Neuron_Connected)
     I0_Motion_Neuron_Connections1 = zeros(1,length(electrode.x));
-    xc = [NeuronX(Neuron_Connected(i,1)) NeuronX(Neuron_Connected(i,2))]; % x coordinates
-    yc = [NeuronY(Neuron_Connected(i,1)) NeuronY(Neuron_Connected(i,2))]; % y coordinates
+    xc = [neuron.x(Neuron_Connected(i,1)) neuron.x(Neuron_Connected(i,2))]; % x coordinates
+    yc = [neuron.y(Neuron_Connected(i,1)) neuron.y(Neuron_Connected(i,2))]; % y coordinates
     Points = max(abs(diff(xc)), abs(diff(yc)))+1; % Number of points in line
     rIndex = round(linspace(yc(1), yc(2), Points)); % Row indices
     cIndex = round(linspace(xc(1), xc(2), Points)); % Column indices
@@ -313,8 +312,8 @@ for i = 1:NumNeurons
 end
 
 for i = 1:NumNeurons
-    x2 = NeuronX(i);
-    y2 = NeuronY(i);
+    x2 = neuron.x(i);
+    y2 = neuron.y(i);
     
     for ii = 1:length(electrode.x)
         
