@@ -11,12 +11,12 @@ load('InitialConditionsFull.mat');
 problem.CostFunction = @(ec) MotionRatio_MS(ec,NumNeurons,I0_Axon_Neurons,I0_Soma_Neurons,Directional_Current_Mult,neuron);  % Cost Function  % Cost Function
 problem.nVar = 100;       % Number of Unknown (Decision) Variables
 problem.VarMin =  0;  % Lower Bound of Decision Variables
-problem.VarMax =  100;   % Upper Bound of Decision Variables
+problem.VarMax =  20;   % Upper Bound of Decision Variables
 
 % Parameters of PSO
 
 params.MaxIt = 30;        % Maximum Number of Iterations
-params.nPop = 100;           % Population Size (Swarm Size)
+params.nPop = 1000;           % Population Size (Swarm Size)
 params.w = 1;               % Intertia Coefficient
 params.wdamp = 1;        % Damping Ratio of Inertia Coefficient
 params.c1 = 2;              % Personal Acceleration Coefficient
@@ -65,9 +65,9 @@ problem.VarMax =  100;   % Upper Bound of Decision Variables
 % Parameters of PSO
 
 params.MaxIt = 30;        % Maximum Number of Iterations
-params.nPop = 100;           % Population Size (Swarm Size)
+params.nPop = 10000;           % Population Size (Swarm Size)
 params.w = 1;               % Intertia Coefficient
-params.wdamp = 0.99;        % Damping Ratio of Inertia Coefficient
+params.wdamp = 1;        % Damping Ratio of Inertia Coefficient
 params.c1 = 2;              % Personal Acceleration Coefficient
 params.c2 = 2;              % Social Acceleration Coefficient
 params.ShowIterInfo = true; % Flag for Showing Iteration Informatin
@@ -88,7 +88,7 @@ xlabel('Iteration');
 ylabel('Best Cost');
 grid on;
 
-
+% save('BestSol.mat','BestSol_MS','BestCosts_MS','BestSol_Opto','BestCosts_Opto');
 %% Functions
 
 function [z,Neuron_Activated] = MotionRatio_MS(ec,NumNeurons,I0_Axon_Neurons,I0_Soma_Neurons,Directional_Current_Mult,neuron)
