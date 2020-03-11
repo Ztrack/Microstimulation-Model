@@ -164,6 +164,7 @@ for i = 1:NumNeurons
 end
 
 % Create neuron.axon for inhibitory neurons
+neuron.number.indices.axon = {};
 
 for i = 1:NumMotifs
     axonmap = zeros(sx,sy); % reset axonmap
@@ -188,9 +189,10 @@ for i = 1:NumMotifs
         axonmap(lindex) = 1;
     end
     
+    motif.axon = find(axonmap == 1); % Creates motif.axon, the inhibitory hub connection
     for ii = 1:length(x)
         if neuron.type(x(ii)) == 1
-            neuron.number(x(ii)).indices.axon = find(axonmap == 1);
+            neuron.number.indices.axon = motif.axon;
         end
     end
 end
@@ -217,8 +219,8 @@ end
 
 %% Neuron And Axon Area Summation
 
-I0_Soma_Neurons = zeros(NumNeurons,length(electrode.x));
-I0_Axon_Neurons = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
+neuron.number.i0.soma = zeros(NumNeurons,length(electrode.x));
+neuron.number.i0.axon = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
 
 for i = 1:NumNeurons
     I0_Axon_Neurons1 = zeros(1,length(electrode.x));
@@ -259,8 +261,8 @@ for i = 1:NumNeurons
         end
         
     end
-    I0_Axon_Neurons(i,:) = I0_Axon_Neurons1;
-    I0_Soma_Neurons(i,:) = I0_Soma_Neurons1;
+    neuron.number(i).i0.axon = I0_Axon_Neurons1;
+    neuron.number(i).i0.soma = I0_Soma_Neurons1;
 end
 
 % Axon Generation for motion-tuned neural connections
@@ -286,17 +288,11 @@ end
 
 Axon_Inhibitory_matrix = zeros(sx,sy);
 Axon_Excitatory_matrix = zeros(sx,sy);
-for i = 1:NumNeurons
-    if neuron.type(i) == 1
-        Axon_Inhibitory_matrix(neuron.number(i).indices.axon) = 1; % Builds excitatory axon matrix
-    else
-        Axon_Excitatory_matrix(neuron.number(i).indices.axon) = 1; % Builds excitatory axon matrix
-    end
-end
+fori
+Axon_Excitatory_matrix(neuron.number(neuron.excitatory).indices.axon) = 1; % Builds excitatory axon matrix
+Axon_Inhibitory_matrix(neuron.number(neuron.inhibitory).indices.axon) = 1; % Builds excitatory axon matrix
 
-
-
-currentmult = zeros(NumNeurons,length(electrode.x));
+neuron.number.currentmult = zeros(NumNeurons,length(electrode.x));
 Axon_Direction_Theta = zeros(NumNeurons,1);
 for i = 1:NumNeurons
     if neuron.number(i).direction == 1 %(left = 180 degrees)
@@ -323,9 +319,9 @@ for i = 1:NumNeurons
         absDiffDeg = min(360-normDeg, normDeg);
         
         if absDiffDeg < theta_threshold % If angle meets critera then:
-            currentmult(i,ii) = 1; % Stores directional current multiplier as full
+            neuron.number(i).currentmult(ii) = 1; % Stores directional current multiplier as full
         else % If angle is not within criteria
-            currentmult(i,ii) = 0.25; % Stores current summation as depreciated
+            neuron.number(i).currentmult(ii) = 0.25; % Stores current summation as depreciated
         end
     end
 end
