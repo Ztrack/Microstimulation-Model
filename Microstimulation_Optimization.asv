@@ -46,8 +46,8 @@ grid on;
 [~,Neuron_Activated] = MotionRatio_MS(BestSol_MS.Position,NumNeurons,I0_Axon_Neurons,I0_Soma_Neurons,Directional_Current_Mult,neuron);
 
 Neuron_No_Activated = find(Neuron_Activated == 1); % All neuron # activated from microstimulation
-Neuron_No_Activated_Motion = intersect(Neuron_No_Activated,neuron.motion.number); % All neuron # of motion tuned neurons activated
-Neuron_No_Activated_NonMotion = intersect(Neuron_No_Activated,neuron.nonMotion.number); % All neuron % of non-motion tuned neurons activated
+Neuron_No_Activated_Motion = intersect(Neuron_No_Activated,Neuron_Motion(1,:)); % All neuron # of motion tuned neurons activated
+Neuron_No_Activated_NonMotion = intersect(Neuron_No_Activated,Neuron_NonMotion); % All neuron % of non-motion tuned neurons activated
 Activated_Motion = length(Neuron_No_Activated_Motion); % Stores # of activated motion-tuned
 Activated_NonMotion = length(Neuron_No_Activated_NonMotion); % Stores # of activated nonmotion-tuned
 I0_Motion = I0_Soma_Neurons(Neuron_No_Activated_Motion,:); % Stores d information for Motion tuned. sum(I0*e) < 1
@@ -90,8 +90,31 @@ grid on;
 
 
 %% Functions
+function z = MotionRatio_Opto(eo,Opto_Thresh,I0_Motion,I0_NonMotion,Activated_Motion,Activated_NonMotion)
+% z = solution to be minimzied
+% eo = all electrode variables
 
-function [z,Neuron_Activated] = MotionRatio_MS(ec,NumNeurons,I0_Axon_Neurons,I0_Soma_Neurons,Directional_Current_Mult,neuron)
+Opto_Motion = zeros(Activated_Motion,1); % Initialize opto stimulus
+Opto_NonMotion = zeros(Activated_NonMotion,1); % Initialize opto stimulus
+
+for i = 1:length(eo) % Summation of stimulus for every neuron by every electrode distance & its corresponding stimulus
+    Opto_Motion = Opto_Motion + I0_Motion(:,i).*eo(i);
+    Opto_NonMotion = Opto_NonMotion + I0_NonMotion(:,i).*eo(i);
+end
+
+
+a = Activated_Motion - sum(Opto_Motion > Opto_Thresh); % Number active motion-tuned = activated - inactivated
+b = Activated_NonMotion - sum(Opto_NonMotion > Opto_Thresh); % Number of active non-motion = activated - inactivated
+
+if a >= 40 % If activated motion-tuned is less than threshold to create percept, ratio is no good
+    z = b/a;
+else
+    z = inf;
+end
+
+end
+
+function [z,Neuron_Activated] = MotionRatio_MS(ec,NumNeurons,I0_Axon_Neurons,I0_Soma_Neurons,Directional_Current_Mult,Neuron_Motion,Neuron_NonMotion,Neuron_Type,Neuron_Excitatory,Neuron_Inhibitory,Neuron_Motif)
 % z = solution to be minimzied
 % ec = all electrode variables
 ElectrodeNo = 1:length(ec);
@@ -115,59 +138,35 @@ Inhibitory_Factor = 0.01;
 Lambda_Hat = zeros(NumNeurons,1); % Probability change due to current injection
 
 for i = 1:NumNeurons
-    if neuron.type(i) == 1 % If it is an FS (Inhibitory)
+    if Neuron_Type(i) == 1 % If it is an FS (Inhibitory)
         Lambda_Hat(i) = FS_Lambda + (FS_Lambda * Ie_Soma_Axon_Neurons(i)); % Lambda_Hat firing rate based off microstimulation
     end
 end
 
-Inhibitory_Effect = zeros(length(neuron.inhibitory),1);
-for i = 1:length(neuron.inhibitory)
-    Inhibitory_Effect(i) = Lambda_Hat(neuron.inhibitory(i)).*Inhibitory_Factor; % Calculates the inhibitory effect from FS firing on RS neurons per motif
+Inhibitory_Effect = zeros(length(Neuron_Inhibitory),1);
+for i = 1:length(Neuron_Inhibitory)
+    Inhibitory_Effect(i) = Lambda_Hat(Neuron_Inhibitory(i)).*Inhibitory_Factor; % Calculates the inhibitory effect from FS firing on RS neurons per motif
 end
 
 for i = 1:NumNeurons % Applying inhibitory factor to firing rates of RS Neurons
-    if neuron.type(i) == 2
-        Lambda_Hat(i) = (RS_Lambda + (RS_Lambda * Ie_Soma_Axon_Neurons(i))) - Inhibitory_Effect(neuron.motif(i)); % Lambda hat firing rate based off stimulation & Inhibitory effect
+    if Neuron_Type(i) == 2
+        Lambda_Hat(i) = (RS_Lambda + (RS_Lambda * Ie_Soma_Axon_Neurons(i))) - Inhibitory_Effect(Neuron_Motif(i)); % Lambda hat firing rate based off stimulation & Inhibitory effect
     else
         % Inhib Neurons do not inhib themselves
     end
 end
 
 Neuron_Activated = zeros(NumNeurons,1);
-Neuron_Activated(neuron.excitatory) = Lambda_Hat(neuron.excitatory) > lambda_needed_RS;
-Neuron_Activated(neuron.inhibitory) = Lambda_Hat(neuron.inhibitory) > lambda_needed_FS;
+Neuron_Activated(Neuron_Excitatory) = Lambda_Hat(Neuron_Excitatory) > lambda_needed_RS;
+Neuron_Activated(Neuron_Inhibitory) = Lambda_Hat(Neuron_Inhibitory) > lambda_needed_FS;
 
-a = sum(Neuron_Activated(neuron.motion.number));
-b = sum(Neuron_Activated(neuron.nonMotion.number));
+a = sum(Neuron_Activated(Neuron_Motion(1,:)));
+b = sum(Neuron_Activated(Neuron_NonMotion));
 
 if a >= 45 % If activated motion-tuned is less than threshold to create percept, ratio is no good
     z = b/a; % Minimize # non-motion tuned
 else
     z = inf; % If minimum # of motion is not achieved, this is not a good solution
-end
-
-end
-
-function z = MotionRatio_Opto(eo,Opto_Thresh,I0_Motion,I0_NonMotion,Activated_Motion,Activated_NonMotion)
-% z = solution to be minimzied
-% eo = all electrode variables
-
-Opto_Motion = zeros(Activated_Motion,1); % Initialize opto stimulus
-Opto_NonMotion = zeros(Activated_NonMotion,1); % Initialize opto stimulus
-
-for i = 1:length(eo) % Summation of stimulus for every neuron by every electrode distance & its corresponding stimulus
-    Opto_Motion = Opto_Motion + I0_Motion(:,i).*eo(i);
-    Opto_NonMotion = Opto_NonMotion + I0_NonMotion(:,i).*eo(i);
-end
-
-
-a = Activated_Motion - sum(Opto_Motion > Opto_Thresh); % Number active motion-tuned = activated - inactivated
-b = Activated_NonMotion - sum(Opto_NonMotion > Opto_Thresh); % Number of active non-motion = activated - inactivated
-
-if a >= 40 % If activated motion-tuned is less than threshold to create percept, ratio is no good
-    z = b/a;
-else
-    z = inf;
 end
 
 end

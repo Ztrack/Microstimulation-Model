@@ -4,7 +4,7 @@ clear all; clc;
 
 % Neuron properties
 neuron.radii = 5; % in micrometers
-Electrode.radii = 10; % in micrometers
+electrode.radii = 10; % in micrometers
 Inhibitory_Factor = .01; % 0 to 1 Greater factor will inhibit RS neurons more
 theta_threshold = 45; % angle difference threshold - If the neuron axon is out of phase by at least this much to the current-stimulus, the electric field acting on the neuron is weakened to 25%.
 
@@ -39,23 +39,25 @@ neuron.excitatory = find(neuron.type == 2); % Array with all Excitatory neurons
 neuron.motion.number = sort(neuron.excitatory(randperm(length(neuron.excitatory),floor(NumNeurons*NeuronMotionRatio)))); % Neurons selected for motion
 neuron.nonMotion.number = ones(NumNeurons,1); neuron.nonMotion.number(neuron.motion.number) = 0; neuron.nonMotion.number = find(neuron.nonMotion.number == 1); % Non-Motion neurons
 neuron.motion.direction = randi([1,2],[1,length(neuron.motion.number)]); % Gives every motion neuron an orientation 0 or 90 degrees
-Coding_Probability = [10/26 4/24]; % Connection Probability, given by Ko et al 2011
-Directional_Probability = [.1 .1; .4 .1]; % Unidirectional 0 degrees = 10%, 90 degrees = 10% ; Bidirectional 0 degrees = 40%, 90 degrees = 10%
-Neuron_Connected = []; k =1;
-for i = 1:length(neuron.motion.number)
-    for j = 1:length(neuron.motion.number)
-        if Coding_Probability(neuron.motion.direction(i)) > rand(1) && i~=j
-            Neuron_Connected(k,1) = neuron.motion.number(i); % Source Neuron
-            Neuron_Connected(k,2) = neuron.motion.number(j); % Connected Neuron
-            if Coding_Probability(neuron.motion.direction(i)) == 10/26
-                Neuron_Connected(k,3) = (.8 > rand(1)); % 1 = Bidirectional, 0 = Unidirectional in direction of connected pair
-            elseif Coding_Probability(neuron.motion.direction(i)) == 4/24
-                Neuron_Connected(k,3) = (.5 > rand(1));
-            end
-            k = k+1;
-        end
-    end
-end
+
+
+% Coding_Probability = [10/26 4/24]; % Connection Probability, given by Ko et al 2011
+% Directional_Probability = [.1 .1; .4 .1]; % Unidirectional 0 degrees = 10%, 90 degrees = 10% ; Bidirectional 0 degrees = 40%, 90 degrees = 10%
+% Neuron_Connected = []; k =1;
+% for i = 1:length(neuron.motion.number)
+%     for j = 1:length(neuron.motion.number)
+%         if Coding_Probability(neuron.motion.direction(i)) > rand(1) && i~=j
+%             Neuron_Connected(k,1) = neuron.motion.number(i); % Source Neuron
+%             Neuron_Connected(k,2) = neuron.motion.number(j); % Connected Neuron
+%             if Coding_Probability(neuron.motion.direction(i)) == 10/26
+%                 Neuron_Connected(k,3) = (.8 > rand(1)); % 1 = Bidirectional, 0 = Unidirectional in direction of connected pair
+%             elseif Coding_Probability(neuron.motion.direction(i)) == 4/24
+%                 Neuron_Connected(k,3) = (.5 > rand(1));
+%             end
+%             k = k+1;
+%         end
+%     end
+% end
 
 Neuron_Inhibitory_Oscillatory = neuron.inhibitory(randperm(numel(neuron.inhibitory), ceil(length(neuron.inhibitory)*Inhibitory_Oscillatory_Percentage)));
 Neuron_Inhibitory_Non_Oscillatory = setdiff(neuron.inhibitory,Neuron_Inhibitory_Oscillatory);
@@ -235,7 +237,7 @@ electrode.x = electrode.x(:); electrode.y = electrode.y(:);
 Stim_Distance_Map = zeros(length(electrode.x),sx,sy);
 for i = 1:length(electrode.x)
     Stim_Loc =  zeros(sx, sy); % Location of stimulus
-    Stim_Loc(electrode.y(i)-Electrode.radii:electrode.y(i)+Electrode.radii,electrode.x(i)-Electrode.radii:electrode.x(i)+Electrode.radii) = 1; % Builds electrode stimulus location matrix
+    Stim_Loc(electrode.y(i)-electrode.radii:electrode.y(i)+electrode.radii,electrode.x(i)-electrode.radii:electrode.x(i)+electrode.radii) = 1; % Builds electrode stimulus location matrix
     Ed = bwdist(Stim_Loc); % Calculates the Euclidean distance from stim points. Sets origin (stim point) to 0
     Stim_Distance = Stim_Loc + Ed; % Distance of every square to the nearest stim location
     Stim_Distance_Map(i,:,:) = Stim_Distance;
@@ -324,7 +326,7 @@ Soma_Matrix(Soma_Matrix>1) = 1;
 % imagesc(Soma_Matrix+Axon_Excitatory_Matrix+Axon_Inhibitory_Matrix)
 
 
-currentmult = zeros(NumNeurons,length(electrode.x));
+Directional_Current_Mult = zeros(NumNeurons,length(electrode.x));
 Axon_Direction_Theta = zeros(NumNeurons,1);
 for i = 1:NumNeurons
     if neuron.number(i).direction == 1 %(left = 180 degrees)
@@ -351,9 +353,9 @@ for i = 1:NumNeurons
         absDiffDeg = min(360-normDeg, normDeg);
         
         if absDiffDeg < theta_threshold % If angle meets critera then:
-            currentmult(i,ii) = 1; % Stores directional current multiplier as full
+            Directional_Current_Mult(i,ii) = 1; % Stores directional current multiplier as full
         else % If angle is not within criteria
-            currentmult(i,ii) = 0.25; % Stores current summation as depreciated
+            Directional_Current_Mult(i,ii) = 0.25; % Stores current summation as depreciated
         end
     end
 end
