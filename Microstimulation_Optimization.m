@@ -11,7 +11,7 @@ load('InitialConditionsFull.mat');
 problem.CostFunction = @(ec) MotionRatio_MS(ec,NumNeurons,I0_Axon_Neurons,I0_Soma_Neurons,Directional_Current_Mult,neuron);  % Cost Function  % Cost Function
 problem.nVar = 100;       % Number of Unknown (Decision) Variables
 problem.VarMin =  0;  % Lower Bound of Decision Variables
-problem.VarMax =  20;   % Upper Bound of Decision Variables
+problem.VarMax =  25;   % Upper Bound of Decision Variables
 
 % Parameters of PSO
 
@@ -55,9 +55,10 @@ I0_NonMotion = I0_Soma_Neurons(Neuron_No_Activated_NonMotion,:); % Stores d info
 Opto_Thresh = 1; % Threshold that needs to be reached to inactivate cell
 % eo = electrode opto stimulus
 
+%%
 % Problem Definiton
 
-problem.CostFunction = @(eo) MotionRatio_Opto(eo,Opto_Thresh,I0_Motion,I0_NonMotion,Activated_Motion,Activated_NonMotion);  % Cost Function  % Cost Function
+problem.CostFunction = @(eo) MotionRatio_Opto(eo,Opto_Thresh,I0_Motion,I0_NonMotion,Activated_Motion,Activated_NonMotion,neuron);  % Cost Function  % Cost Function
 problem.nVar = 100;       % Number of Unknown (Decision) Variables
 problem.VarMin =  0;  % Lower Bound of Decision Variables
 problem.VarMax =  100;   % Upper Bound of Decision Variables
@@ -65,7 +66,7 @@ problem.VarMax =  100;   % Upper Bound of Decision Variables
 % Parameters of PSO
 
 params.MaxIt = 30;        % Maximum Number of Iterations
-params.nPop = 10000;           % Population Size (Swarm Size)
+params.nPop = 100000;           % Population Size (Swarm Size)
 params.w = 1;               % Intertia Coefficient
 params.wdamp = 1;        % Damping Ratio of Inertia Coefficient
 params.c1 = 2;              % Personal Acceleration Coefficient
@@ -140,7 +141,7 @@ Neuron_Activated(neuron.inhibitory) = Lambda_Hat(neuron.inhibitory) > lambda_nee
 a = sum(Neuron_Activated(neuron.motion.number));
 b = sum(Neuron_Activated(neuron.nonMotion.number));
 
-if a >= 45 % If activated motion-tuned is less than threshold to create percept, ratio is no good
+if a >= length(neuron.motion.number)*.25 % If activated motion-tuned is less than threshold to create percept, ratio is no good
     z = b/a; % Minimize # non-motion tuned
 else
     z = inf; % If minimum # of motion is not achieved, this is not a good solution
@@ -148,7 +149,7 @@ end
 
 end
 
-function z = MotionRatio_Opto(eo,Opto_Thresh,I0_Motion,I0_NonMotion,Activated_Motion,Activated_NonMotion)
+function z = MotionRatio_Opto(eo,Opto_Thresh,I0_Motion,I0_NonMotion,Activated_Motion,Activated_NonMotion,neuron)
 % z = solution to be minimzied
 % eo = all electrode variables
 
@@ -164,7 +165,7 @@ end
 a = Activated_Motion - sum(Opto_Motion > Opto_Thresh); % Number active motion-tuned = activated - inactivated
 b = Activated_NonMotion - sum(Opto_NonMotion > Opto_Thresh); % Number of active non-motion = activated - inactivated
 
-if a >= 40 % If activated motion-tuned is less than threshold to create percept, ratio is no good
+if a >= length(neuron.motion.number)*.20 % If activated motion-tuned is less than threshold to create percept, ratio is no good
     z = b/a;
 else
     z = inf;

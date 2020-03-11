@@ -36,7 +36,7 @@ neuron.type = repmat([1,2,2,2,2],1,NumMotifs); % Defines what type of neuron thi
 neuron.motif = repmat(1:1:NumMotifs,NumNeuronsMotif,1); neuron.motif = neuron.motif(:)'; % Defines which motif the neuron belongs to
 neuron.inhibitory = find(neuron.type == 1); % Array with all inhibitory neurons
 neuron.excitatory = find(neuron.type == 2); % Array with all Excitatory neurons
-neuron.motion.number = sort(neuron.excitatory(randperm(length(neuron.excitatory),floor(NumNeurons*NeuronMotionRatio)))); % Neurons selected for motion
+neuron.motion.number = sort(neuron.excitatory(randperm(length(neuron.excitatory),floor(length(neuron.excitatory)*NeuronMotionRatio)))); % Neurons selected for motion
 neuron.nonMotion.number = ones(NumNeurons,1); neuron.nonMotion.number(neuron.motion.number) = 0; neuron.nonMotion.number = find(neuron.nonMotion.number == 1); % Non-Motion neurons
 neuron.motion.direction = randi([1,2],[1,length(neuron.motion.number)]); % Gives every motion neuron an orientation 0 or 90 degrees
 
@@ -66,7 +66,7 @@ Neuron_Oscillatory_Type = zeros(1,NumNeurons); Neuron_Oscillatory_Type(Neuron_In
 %% Motif Location Selector
 Neuron_Population_Matrix = zeros(sx, sy); % Initialize location matrix size nxm
 
-ii = 1; iii = 1; MotifEdgeDistance = 100;
+ii = 1; iii = 1; MotifEdgeDistance = 200;
 for i = 1:NumPads
     
     pad.start.x(i) = 1 + (ii-1).*(sx/NumPadsX); % X start of pad i
