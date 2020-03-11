@@ -9,7 +9,7 @@ Inhibitory_Factor = .01; % 0 to 1 Greater factor will inhibit RS neurons more
 theta_threshold = 45; % angle difference threshold - If the neuron axon is out of phase by at least this much to the current-stimulus, the electric field acting on the neuron is weakened to 25%.
 
 % Population Properties
-NumNeurons = 500; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
+NumNeurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
 Excitatory_Inhibitory_Ratio = 1/4; % % Number of Inhibitory / Excitatory Neurons in a motif
 NumNeuronsMotif = 5;
 NumMotifs = NumNeurons/NumNeuronsMotif; % # Neuron in Motif.
@@ -64,7 +64,7 @@ Neuron_Oscillatory_Type = zeros(1,NumNeurons); Neuron_Oscillatory_Type(Neuron_In
 %% Motif Location Selector
 Neuron_Population_Matrix = zeros(sx, sy); % Initialize location matrix size nxm
 
-ii = 1; iii = 1; MotifEdgeDistance = 50;
+ii = 1; iii = 1; MotifEdgeDistance = 100;
 for i = 1:NumPads
     
     pad.start.x(i) = 1 + (ii-1).*(sx/NumPadsX); % X start of pad i
@@ -83,14 +83,16 @@ for i = 1:NumPads
     % X Filtering
     if sum(ii == 1:NumPadsX:NumPads) > 0 % If this is a top pad
         pad.modstart.x(i) = pad.start.x(i) + MotifEdgeDistance;
-    elseif sum(ii == NumPadsX:NumPadsX:NumPads) > 0 % if this is a bottom pad
+    end
+    if sum(ii == NumPadsX:NumPadsX:NumPads) > 0 % if this is a bottom pad
         pad.modend.x(i) = pad.end.x(i) - MotifEdgeDistance;
     end
     
     % Y Filtering
-    if sum(ii == 1:NumPadsX) > 0 % If this is a top pad
+    if sum(iii == 1) > 0 % If this is a top pad
         pad.modstart.y(i) = pad.start.y(i) + MotifEdgeDistance;
-    elseif sum(ii == NumPads-NumPadsX+1:NumPads) > 0 % if this is a bottom pad
+    end
+    if sum(iii == NumPadsY) > 0 % if this is a bottom pad
         pad.modend.y(i) = pad.end.y(i) - MotifEdgeDistance;
     end
     
@@ -102,7 +104,7 @@ for i = 1:NumPads
     end
 end
 
-ii = 1; ClosestMotif = 0; MinimumMotifDistance = 200;
+ii = 1; ClosestMotif = 0; MotifLength = 50; MinimumMotifDistance = MotifLength*sqrt(2);
 for i = 1:NumMotifs
     
     motif.pad(i) = ii;
@@ -137,28 +139,22 @@ end
 %% Neural Population Matrices
 
 MinimumNeuronDistance = neuron.radii*2 + 1;
-MotifLength = 50; ClosestNeuron = 0;
+ClosestNeuron = 0; 
+neuron.x(i) = 0; neuron.y(i) = 0; % Initialize
 for i = 1:NumNeurons
     x1 = motif.center.x(neuron.motif(i));
     y1 = motif.center.y(neuron.motif(i));
     
-    if i == 1 % First neuron only, initialize random location
-        neuron.x(i) = randi([x1-MotifLength x1+MotifLength],1,1); % Selects random X,Y Combination to test
-        neuron.y(i) = randi([y1+neuron.radii+1 y1+MotifLength],1,1);
-    else
-        while ClosestNeuron < MinimumNeuronDistance
-            if neuron.type == 1
-                y2 = randi([y1+neuron.radii+1 y1+MotifLength],1,1);
-            else
-                y2 = randi([y1-MotifLength y1-neuron.radii-1],1,1);
-            end
-            x2 = randi([x1-MotifLength x1+MotifLength],1,1); % Selects random X,Y Combination to test
-            ClosestNeuron = min(sqrt((x2 - neuron.x).^2 + (y2 - neuron.y).^2)); % Determines ecleudian distance between test xy and all motifs
-            if ClosestNeuron > MinimumNeuronDistance % If ecleudian distance to every other motif is greater than minimum, these values work.
-                neuron.x(i) = x2;
-                neuron.y(i) = y2;
-            end
+    while ClosestNeuron < MinimumNeuronDistance
+        if neuron.type == 1
+            y2 = randi([y1+neuron.radii*2 y1+MotifLength],1,1);
+        else
+            y2 = randi([y1-MotifLength y1-neuron.radii*2],1,1);
         end
+        x2 = randi([x1-MotifLength x1+MotifLength],1,1); % Selects random X,Y Combination to test
+        ClosestNeuron = min(sqrt((x2 - neuron.x).^2 + (y2 - neuron.y).^2)); % Determines ecleudian distance between test xy and all motifs
+        neuron.x(i) = x2;
+        neuron.y(i) = y2;
     end
     ClosestNeuron = 0; % Reset value for closest motif distance
 end
@@ -325,7 +321,7 @@ for i = 1:NumNeurons
     Soma_Matrix(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii,neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
 end
 Soma_Matrix(Soma_Matrix>1) = 1;
-imagesc(Soma_Matrix+Axon_Excitatory_Matrix+Axon_Inhibitory_Matrix)
+% imagesc(Soma_Matrix+Axon_Excitatory_Matrix+Axon_Inhibitory_Matrix)
 
 
 currentmult = zeros(NumNeurons,length(electrode.x));
