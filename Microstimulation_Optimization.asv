@@ -15,8 +15,8 @@ problem.VarMax =  100;   % Upper Bound of Decision Variables
 
 % Parameters of PSO
 
-params.MaxIt = 10;        % Maximum Number of Iterations
-params.nPop = 100;           % Population Size (Swarm Size)
+params.MaxIt = 30;        % Maximum Number of Iterations
+params.nPop = 1000;           % Population Size (Swarm Size)
 params.w = 1;               % Intertia Coefficient
 params.wdamp = 1;        % Damping Ratio of Inertia Coefficient
 params.c1 = 2;              % Personal Acceleration Coefficient
