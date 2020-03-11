@@ -219,7 +219,6 @@ end
 
 %% Neuron And Axon Area Summation
 
-Axon_Excitatory_matrix = zeros(sx,sy);
 neuron.number.i0.soma = zeros(NumNeurons,length(electrode.x));
 neuron.number.i0.axon = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
 neuron.number.direction = randi([1,4],NumNeurons,1); % 1 = x value down (left),2 = Y value down (up), 3 = X value up (right), 4 = Y value up (down)
@@ -235,9 +234,6 @@ for i = 1:NumNeurons
     I0_Axon_Neurons1 = zeros(1,length(electrode.x));
     I0_Soma_Neurons1 = zeros(1,length(electrode.x));
     if neuron.type(i) == 1
-        x = motif.center.x(neuron.motif(i))-length(Neuron_Loc)/2:motif.center.x(neuron.motif(i))+length(Neuron_Loc)/2-1; % Location of motif does not change with Orientation
-        y = motif.center.y(neuron.motif(i))-length(Neuron_Loc)/2:motif.center.y(neuron.motif(i))+length(Neuron_Loc)/2-1;
-        lindex = find(Axon_Inhibitory_matrix(y,x)==1);
         for j = 1:length(electrode.x)
             I0_Axon_Neurons1(j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % sums all inhibitory axon current feedback
             I0_Soma_Neurons1(j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-NeuronRadii:neuron.y(i)+NeuronRadii, neuron.x(i)-NeuronRadii:neuron.x(i)+NeuronRadii).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
@@ -294,8 +290,10 @@ for i = 1:length(I0_Motion_Neuron_Connections)
     neuron.number(Neuron_Connected(i,2)).i0.motion = neuron.number(Neuron_Connected(i,2)).i0.motion + I0_Motion_Neuron_Connections(i,:);
 end
 
+Axon_Inhibitory_matrix = zeros(sx,sy);
+Axon_Excitatory_matrix = zeros(sx,sy);
 Axon_Excitatory_matrix(neuron.number(neuron.excitatory).indices.axon) = 1; % Builds excitatory axon matrix
-
+Axon_Inhibitory_matrix(neuron.number(neuron.inhibitory).indices.axon) = 1; % Builds excitatory axon matrix
 
 neuron.number.currentmult = zeros(NumNeurons,length(electrode.x));
 Axon_Direction_Theta = zeros(NumNeurons,1);
