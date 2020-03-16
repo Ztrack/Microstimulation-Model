@@ -12,14 +12,14 @@ if Directional_Current_Modifier == 0
 end
 
 if Motion_Axon == 0
-    I0_Motion_Neurons = zeros(NumNeurons,length(ElectrodeX));
+    I0_Motion_Neurons = zeros(NumNeurons,length(electrode.x));
 end
 
 %% Extracellular Current Matrix /Loop Start
 h = 50; % Step size
 I0 = h:h:25000;
 numrepeats = 100;
-ElectrodeDist = sqrt((sx/2-ElectrodeX).^2 + (sy/2-ElectrodeY).^2);
+ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
 ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
 
 
@@ -53,7 +53,7 @@ for kk = 1:length(Inhibitory_Factor)
             Lambda = zeros(NumNeurons,1);
             
             for i = 1:NumNeurons
-                if Neuron_Type(i) == 1 % If it is an FS (Inhibitory)
+                if neuron.type(i) == 1 % If it is an FS (Inhibitory)
                     Lambda_Hat(i) = FS_Lambda + (FS_Lambda * Ie_Soma_Axon_Neurons(i)); % Lambda_Hat firing rate based off microstimulation
                     Lambda(i) = FS_Lambda; % Lambda regular, no microstimulation
                 end
@@ -62,25 +62,25 @@ for kk = 1:length(Inhibitory_Factor)
             Inhibitory_Effect = zeros(NumMotifs,1);
             Inhibitory_Effect_Lambda = zeros(NumMotifs,1);
             for i = 1:NumMotifs
-                Inhibitory_Effect(i) = Lambda_Hat(Neuron_Inhibitory(i)).*Inhibitory_Factor(kk); % Calculates the inhibitory effect from FS firing on RS neurons per motif
+                Inhibitory_Effect(i) = Lambda_Hat(neuron.inhibitory(i)).*Inhibitory_Factor(kk); % Calculates the inhibitory effect from FS firing on RS neurons per motif
                 Inhibitory_Effect_Lambda = FS_Lambda*Inhibitory_Factor(kk);
             end
             
             for i = 1:NumNeurons % Applying inhibitory factor to firing rates of RS Neurons
-                if Neuron_Type(i) == 2
-                    Lambda_Hat(i) = (RS_Lambda + (RS_Lambda * Ie_Soma_Axon_Neurons(i))) - Inhibitory_Effect(Neuron_Motif(i)); % Lambda hat firing rate based off stimulation & Inhibitory effect
+                if neuron.type(i) == 2
+                    Lambda_Hat(i) = (RS_Lambda + (RS_Lambda * Ie_Soma_Axon_Neurons(i))) - Inhibitory_Effect(neuron.motif(i)); % Lambda hat firing rate based off stimulation & Inhibitory effect
                     Lambda(i) = RS_Lambda - Inhibitory_Effect_Lambda; % Lambda regular, no microstimulation
                 else
                     % Inhib Neurons do not inhib themselves
                 end
             end
             
-            for i = 1:length(Neuron_Connected) % Lambda_Hat Increase for motion tuned pairs
-                Lambda_Hat(Neuron_Connected(i,2)) = Lambda_Hat(Neuron_Connected(i,2)) + RS_Lambda.*Axonal_Mult;
-                if Neuron_Connected(i,3) == 1 % Bi-Directional connections
-                    Lambda_Hat(Neuron_Connected(i,1)) = Lambda_Hat(Neuron_Connected(i,1)) + RS_Lambda.*Axonal_Mult;
-                end
-            end
+%             for i = 1:length(Neuron_Connected) % Lambda_Hat Increase for motion tuned pairs
+%                 Lambda_Hat(Neuron_Connected(i,2)) = Lambda_Hat(Neuron_Connected(i,2)) + RS_Lambda.*Axonal_Mult;
+%                 if Neuron_Connected(i,3) == 1 % Bi-Directional connections
+%                     Lambda_Hat(Neuron_Connected(i,1)) = Lambda_Hat(Neuron_Connected(i,1)) + RS_Lambda.*Axonal_Mult;
+%                 end
+%             end
             
             % Finding RB for each neuron
             Lambda_Spikes = [0 0];
@@ -97,7 +97,7 @@ for kk = 1:length(Inhibitory_Factor)
                     end
                     
                     Y = prctile(Lambda_Hat_Spikes,05); % Calculates bottom 5th percentile
-                    if Y > mean(Lambda_Spikes(Neuron_Type(i))+1)
+                    if Y > mean(Lambda_Spikes(neuron.type(i))+1)
                         Neuron_RB1(i) = I0(ii);
                     end
                 end
