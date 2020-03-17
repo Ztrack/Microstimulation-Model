@@ -90,7 +90,7 @@ for kk = 1:length(Inhibitory_Factor)
             
             for i = 1:NumNeurons
                 if isnan(Neuron_RB1(i)) % If RB does not exist, continue, otherwise this neuron is skipped
-                    if neuron.oscillatorytype(i) == 1 & Oscillatory_Behavior == 1 % If the neuron has oscillatory behavior then use:
+                    if neuron.oscillatorytype == 1 & Oscillatory_Behavior == 1 % If the neuron has oscillatory behavior then use:
                         Lambda_Hat_Spikes = Oscillatory_PoissonGen(Lambda_Hat(i), dt, NumTrials);
                     else % Otherwise use the simple function:
                         Lambda_Hat_Spikes = Simple_PoissonGen(Lambda_Hat(i), dt, NumTrials);
