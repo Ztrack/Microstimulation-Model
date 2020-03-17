@@ -11,7 +11,7 @@ I0 = 100;
 %% Stimulation Locations
 
 if Stim_Center == 1
-    ElectrodeDist = sqrt((sx/2-ElectrodeX).^2 + (sy/2-ElectrodeY).^2);
+    ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
     ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
 else
     ElectrodeNo = randperm(100,Num_Stim);
@@ -19,7 +19,7 @@ end
 
 Stim_Loc =  zeros(sx, sy);
 for i = 1:length(ElectrodeNo)
-Stim_Loc(ElectrodeY(ElectrodeNo(i))-Electroderadii:ElectrodeY(ElectrodeNo(i))+Electroderadii,ElectrodeX(ElectrodeNo(i))-Electroderadii:ElectrodeX(ElectrodeNo(i))+Electroderadii)  = 1;
+Stim_Loc(electrode.y(ElectrodeNo(i))-electrode.radii:electrode.y(ElectrodeNo(i))+electrode.radii,electrode.x(ElectrodeNo(i))-electrode.radii:electrode.x(ElectrodeNo(i))+electrode.radii)  = 1;
 end
 Ed = bwdist(Stim_Loc); % Calculates the Euclidean distance from stim points. Sets origin (stim point) to 0
 Stim_Distance = Stim_Loc + Ed; % Distance of every square to the nearest stim location
@@ -45,7 +45,7 @@ Lambda_Hat = zeros(NumNeurons,1); % Probability change due to current injection
 Lambda = zeros(NumNeurons,1);
 
 for i = 1:NumNeurons
-    if Neuron_Type(i) == 1 % If it is an FS (Inhibitory)
+    if neuron.type(i) == 1 % If it is an FS (Inhibitory)
         Lambda_Hat(i) = FS_Lambda + (FS_Lambda * Ie_Soma_Axon_Neurons(i)); % Lambda_Hat firing rate based off microstimulation
         Lambda(i) = FS_Lambda; % Lambda regular, no microstimulation
     end
@@ -59,7 +59,7 @@ for i = 1:NumMotifs
 end
 
 for i = 1:NumNeurons % Applying inhibitory factor to firing rates of RS Neurons
-    if Neuron_Type(i) == 2
+    if neuron.type(i) == 2
         Lambda_Hat(i) = (RS_Lambda + (RS_Lambda * Ie_Soma_Axon_Neurons(i))) - Inhibitory_Effect(Neuron_Motif(i)); % Lambda hat firing rate based off stimulation & Inhibitory effect
         Lambda(i) = RS_Lambda - Inhibitory_Effect_Lambda; % Lambda regular, no microstimulation
     else
@@ -70,7 +70,7 @@ end
 %% Poisson Spiking Model pt 1 - Lambda (No Stimulation)
 Distances = zeros(length(ElectrodeNo),length(MotifX));
 for i = 1:length(ElectrodeNo)
-    Distances(i,:) = sqrt((ElectrodeX(ElectrodeNo(i))-MotifX).^2 + (ElectrodeY(ElectrodeNo(i)) - MotifY).^2); % Stores distances of every motif to every active electrode
+    Distances(i,:) = sqrt((electrode.x(ElectrodeNo(i))-MotifX).^2 + (electrode.y(ElectrodeNo(i)) - MotifY).^2); % Stores distances of every motif to every active electrode
 end
 Dist = sort(Distances(1,:));
 Stimulated_Motifs = find(Distances(1,:) == Dist(1)); % Stores which motif is closest
@@ -119,7 +119,7 @@ imagesc(1./Stim_Distance); title('Active Electrode Locations'); xlabel('X Positi
 Neuron_Inhibitory_Population_Matrix = zeros(sx,sy);
 Neuron_Excitatory_Population_Matrix = zeros(sx,sy);
 for i = 1:NumNeurons
-    if Neuron_Type(i) == 1
+    if neuron.type(i) == 1
         Neuron_Inhibitory_Population_Matrix(NeuronY(i)-NeuronRadii:NeuronY(i)+NeuronRadii, NeuronX(i)-NeuronRadii:NeuronX(i)+NeuronRadii) = 1;
     else
         if length(intersect(i,Neuron_Motion(1,:))) == 1 % If true, this neuron is a motion neuron
@@ -177,7 +177,7 @@ figure; imagesc(PadMatrix); colormap(map); title('Pads'); % Color coded map repr
 
 figure; imagesc(PadMatrix); colormap(map); title('Pads with electrodes'); % Color coded map representing different pads
 hold on;
-plot(ElectrodeX,ElectrodeY,'.','color','black');
+plot(electrode.x,electrode.y,'.','color','black');
 
 
 figure; imagesc(PadMatrix); colormap(map); title('Neuron Synaptic Connections'); % Color coded map representing different pads

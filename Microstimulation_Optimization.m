@@ -118,7 +118,7 @@ for i = 1:NumNeurons
     Neuron_Pop_L(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii,neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = Lambda(i);
 end
 Neuron_Pop_D = Neuron_Pop_LH - Neuron_Pop_L;
-Neuron_Pop_D(Neuron_Pop_D < 0) = 0; % Neuron pop delta
+Neuron_Pop_D(Neuron_Pop_D < 0) = 0; % Neuron pop delta firing rate
 
 figure; imagesc(Neuron_Pop_D); colorbar; title('Neural Population Firing Rate Change'); colormap(map);
 

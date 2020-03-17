@@ -9,7 +9,7 @@ Inhibitory_Factor = .01; % 0 to 1 Greater factor will inhibit RS neurons more
 theta_threshold = 45; % angle difference threshold - If the neuron axon is out of phase by at least this much to the current-stimulus, the electric field acting on the neuron is weakened to 25%.
 
 % Population Properties
-NumNeurons = 5000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
+NumNeurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
 Excitatory_Inhibitory_Ratio = 1/4; % % Number of Inhibitory / Excitatory Neurons in a motif
 NumNeuronsMotif = 5;
 NumMotifs = NumNeurons/NumNeuronsMotif; % # Neuron in Motif.
@@ -59,9 +59,9 @@ neuron.motion.direction = randi([1,2],[1,length(neuron.motion.number)]); % Gives
 %     end
 % end
 
-Neuron_Inhibitory_Oscillatory = neuron.inhibitory(randperm(numel(neuron.inhibitory), ceil(length(neuron.inhibitory)*Inhibitory_Oscillatory_Percentage)));
-Neuron_Inhibitory_Non_Oscillatory = setdiff(neuron.inhibitory,Neuron_Inhibitory_Oscillatory);
-Neuron_Oscillatory_Type = zeros(1,NumNeurons); Neuron_Oscillatory_Type(Neuron_Inhibitory_Oscillatory) = 1; % Stores if neuron is non-oscillatory (0), or oscillatory (1)
+neuron.oscillatory = neuron.inhibitory(randperm(numel(neuron.inhibitory), ceil(length(neuron.inhibitory)*Inhibitory_Oscillatory_Percentage)));
+neuron.nonoscillatory = setdiff(neuron.inhibitory,neuron.oscillatory);
+neuron.oscillatorytype = zeros(1,NumNeurons); neuron.oscillatorytype(neuron.oscillatory) = 1; % Stores if neuron is non-oscillatory (0), or oscillatory (1)
 
 %% Motif Location Selector
 Neuron_Population_Matrix = zeros(sx, sy); % Initialize location matrix size nxm
@@ -188,7 +188,7 @@ for i = 1:NumMotifs
     
     for ii = 1:length(x)
         if neuron.type(x(ii)) == 1
-            neuron.number(x(ii)).indices.axon = find(axonmap == 1);
+            neuron.indices.axon(x(ii)) = find(axonmap == 1);
         end
     end
 end
@@ -210,14 +210,14 @@ for i = 1:NumMotifs
         neuron.y(x(ii)) = y2;
         
         if neuron.type(x(ii)) == 1 % Now we rotate the axon indices
-            [y3,x3] = ind2sub([sy sx],neuron.number(x(ii)).indices.axon); % Converts indices to x,y. returns rows,columns
+            [y3,x3] = ind2sub([sy sx],neuron.indices.axon(x(ii))); % Converts indices to x,y. returns rows,columns
             x3 = motif.center.x(i) - x3;
             y3 = motif.center.y(i) - y3;
             x2 = motif.center.x(i) + x3*cosd(theta)-y3*sind(theta); % Transform x deg
             y2 = motif.center.y(i) + x3*sind(theta)+y3*cosd(theta); % Transform x deg
             ind = sub2ind([sy sx],y2,x2);
             
-            neuron.number(x(ii)).indices.axon = ind; % Converts x,y back to indices for storage
+            neuron.indices.axon(x(ii)) = ind; % Converts x,y back to indices for storage
             
         end
     end
@@ -245,23 +245,21 @@ end
 
 %% Neuron And Axon Area Summation
 
-I0_Soma_Neurons = zeros(NumNeurons,length(electrode.x));
-I0_Axon_Neurons = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
+neuron.io.soma = zeros(NumNeurons,length(electrode.x));
+neuron.io.axon = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
 
 for i = 1:NumNeurons
-    I0_Axon_Neurons1 = zeros(1,length(electrode.x));
-    I0_Soma_Neurons1 = zeros(1,length(electrode.x));
     
     if neuron.type(i) == 1
-        neuron.number(i).direction = motif.orientation(neuron.motif(i)); % Sets stored value for inhibitory axon direction
+        neuron.direction(i) = motif.orientation(neuron.motif(i)); % Sets stored value for inhibitory axon direction
         for j = 1:length(electrode.x)
-            I0_Axon_Neurons1(j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % sums all inhibitory axon current feedback
-            I0_Soma_Neurons1(j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
+            neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % sums all inhibitory axon current feedback
+            neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
         end
         
     elseif neuron.type(i) == 2 % Creating a new axon matrix for Excitatory neurons. Must be made one at a time to calculate current effect on every neuron
-        neuron.number(i).direction = randi([1,4],1,1); % 1 = x value down (left),2 = Y value down (up), 3 = X value up (right), 4 = Y value up (down)
-        re = [0,0,0,0]; re(neuron.number(i).direction) = 1; % Random element selection to choose orientation of axon
+        neuron.direction(i) = randi([1,4],1,1); % 1 = x value down (left),2 = Y value down (up), 3 = X value up (right), 4 = Y value up (down)
+        re = [0,0,0,0]; re(neuron.direction(i)) = 1; % Random element selection to choose orientation of axon
         rl = randi([50+neuron.radii,480+neuron.radii],1); % Random length of axon + neuron.radii
         xc = [neuron.x(i)+(re(3)*neuron.radii)-(re(1)*neuron.radii) neuron.x(i)+(re(3)*rl)-(re(1)*rl)]; % x coordinates of neuron, axon point
         yc = [neuron.y(i)+(re(4)*neuron.radii)-(re(2)*neuron.radii) neuron.y(i)+(re(4)*rl)-(re(2)*rl)]; % y coordinates of neuron, axon point
@@ -279,15 +277,13 @@ for i = 1:NumNeurons
         rIndex = round(linspace(yc(1), yc(2), Points)); % Row indices
         cIndex = round(linspace(xc(1), xc(2), Points)); % Column indices
         lindex = sub2ind([sx sy], rIndex,cIndex); % Linear indices
-        neuron.number(i).indices.axon = lindex(:);
+        neuron.indices.axon(i) = lindex(:);
         for j = 1:length(electrode.x)
-            I0_Axon_Neurons1(j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % Stores information on the axon morphology to calculate current backpropogation
-            I0_Soma_Neurons1(j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^2)); % Summation 1/r^2 area component of soma
+            neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % Stores information on the axon morphology to calculate current backpropogation
+            neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^2)); % Summation 1/r^2 area component of soma
         end
         
     end
-    I0_Axon_Neurons(i,:) = I0_Axon_Neurons1;
-    I0_Soma_Neurons(i,:) = I0_Soma_Neurons1;
 end
 
 % Axon Generation for motion-tuned neural connections
@@ -311,31 +307,39 @@ end
 %     neuron.number(Neuron_Connected(i,2)).i0.motion = neuron.number(Neuron_Connected(i,2)).i0.motion + I0_Motion_Neuron_Connections(i,:);
 % end
 
-Soma_Matrix = zeros(sx,sy);
-Axon_Inhibitory_Matrix = zeros(sx,sy);
-Axon_Excitatory_Matrix = zeros(sx,sy);
+%% Population Maps
+
+population.inhibitory = zeros(sx,sy); % Inhibitory neuron population map
+population.excitatory = zeros(sx,sy); % Excitatory neuron population map
+population.axon = zeros(sx,sy); % Axon only population map
+
 for i = 1:NumNeurons
     if neuron.type(i) == 1
-        Axon_Inhibitory_Matrix(neuron.number(i).indices.axon) = 1; % Builds excitatory axon matrix
+        if neuron.oscillatorytype(i) == 1 % If true, this neuron is a motion neuron
+            population.oscillatory(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
+        end
+        population.inhibitory(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
     else
-        Axon_Excitatory_Matrix(neuron.number(i).indices.axon) = 1; % Builds excitatory axon matrix
+        if length(intersect(i,neuron.motion.number)) == 1 % If true, this neuron is a motion neuron
+            population.motion(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
+        end
+        population.excitatory(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
     end
-    Soma_Matrix(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii,neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
+    population.axon(neuron.indices.axon(i)) = 1; % Creates axon indices population map
 end
-Soma_Matrix(Soma_Matrix>1) = 1;
-% imagesc(Soma_Matrix+Axon_Excitatory_Matrix+Axon_Inhibitory_Matrix)
 
 
+%% Directional Current Multiplier
 Directional_Current_Mult = zeros(NumNeurons,length(electrode.x));
 Axon_Direction_Theta = zeros(NumNeurons,1);
 for i = 1:NumNeurons
-    if neuron.number(i).direction == 1 %(left = 180 degrees)
+    if neuron.direction(i) == 1 %(left = 180 degrees)
         Axon_Direction_Theta(i) = 180;
-    elseif neuron.number(i).direction == 2 % (up = 90 degrees)
+    elseif neuron.direction(i) == 2 % (up = 90 degrees)
         Axon_Direction_Theta(i) = 90;
-    elseif neuron.number(i).direction == 3 % (right = 0 degrees)
+    elseif neuron.direction(i) == 3 % (right = 0 degrees)
         Axon_Direction_Theta(i) = 0;
-    elseif neuron.number(i).direction == 4 % (down, = -90 or 270 degrees)
+    elseif neuron.direction(i) == 4 % (down, = -90 or 270 degrees)
         Axon_Direction_Theta(i) = -90;
     end
 end
