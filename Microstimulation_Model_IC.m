@@ -64,7 +64,6 @@ neuron.nonoscillatory = setdiff(neuron.inhibitory,neuron.oscillatory);
 neuron.oscillatorytype = zeros(1,NumNeurons); neuron.oscillatorytype(neuron.oscillatory) = 1; % Stores if neuron is non-oscillatory (0), or oscillatory (1)
 
 %% Motif Location Selector
-Neuron_Population_Matrix = zeros(sx, sy); % Initialize location matrix size nxm
 
 ii = 1; iii = 1; MotifEdgeDistance = 200;
 for i = 1:NumPads
@@ -140,19 +139,15 @@ end
 
 %% Neural Population Matrices
 
-MinimumNeuronDistance = neuron.radii*2 + 1;
+MinimumNeuronDistance = neuron.radii*4 + 1;
 ClosestNeuron = 0; 
-neuron.x(i) = 0; neuron.y(i) = 0; % Initialize
+neuron.x(i) = 1; neuron.y(i) = 1; % Initialize
 for i = 1:NumNeurons
     x1 = motif.center.x(neuron.motif(i));
     y1 = motif.center.y(neuron.motif(i));
     
     while ClosestNeuron < MinimumNeuronDistance
-        if neuron.type == 1
-            y2 = randi([y1+neuron.radii*2 y1+MotifLength],1,1);
-        else
-            y2 = randi([y1-MotifLength y1-neuron.radii*2],1,1);
-        end
+        y2 = randi([y1-MotifLength y1+MotifLength],1,1); % Selects random X,Y Combination to test
         x2 = randi([x1-MotifLength x1+MotifLength],1,1); % Selects random X,Y Combination to test
         ClosestNeuron = min(sqrt((x2 - neuron.x).^2 + (y2 - neuron.y).^2)); % Determines ecleudian distance between test xy and all motifs
         neuron.x(i) = x2;
@@ -161,7 +156,7 @@ for i = 1:NumNeurons
     ClosestNeuron = 0; % Reset value for closest motif distance
 end
 
-% Create neuron.axon for inhibitory neurons
+% Create neuron axon indices for inhibitory neurons
 
 for i = 1:NumMotifs
     axonmap = zeros(sx,sy); % reset axonmap
@@ -188,7 +183,7 @@ for i = 1:NumMotifs
     
     for ii = 1:length(x)
         if neuron.type(x(ii)) == 1
-            neuron.indices.axon(x(ii)) = find(axonmap == 1);
+            neuron.indices(x(ii)).axon = find(axonmap == 1);
         end
     end
 end
@@ -210,19 +205,28 @@ for i = 1:NumMotifs
         neuron.y(x(ii)) = y2;
         
         if neuron.type(x(ii)) == 1 % Now we rotate the axon indices
-            [y3,x3] = ind2sub([sy sx],neuron.indices.axon(x(ii))); % Converts indices to x,y. returns rows,columns
+            [y3,x3] = ind2sub([sy sx],neuron.indices(x(ii)).axon); % Converts indices to x,y. returns rows,columns
             x3 = motif.center.x(i) - x3;
             y3 = motif.center.y(i) - y3;
             x2 = motif.center.x(i) + x3*cosd(theta)-y3*sind(theta); % Transform x deg
             y2 = motif.center.y(i) + x3*sind(theta)+y3*cosd(theta); % Transform x deg
             ind = sub2ind([sy sx],y2,x2);
             
-            neuron.indices.axon(x(ii)) = ind; % Converts x,y back to indices for storage
+            neuron.indices(x(ii)).axon = ind; % Converts x,y back to indices for storage
             
         end
     end
 end
 
+% Neuron Soma Indices
+
+for i = 1:NumNeurons
+    singlepop = zeros(sx,sy);
+    singlepop(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
+    neuron.indices(i).soma = find(singlepop == 1);
+end
+
+clear('singlepop');
 %% Stimulation Locations Matrix
 
 electrode.x = []; electrode.y = [];
@@ -277,7 +281,7 @@ for i = 1:NumNeurons
         rIndex = round(linspace(yc(1), yc(2), Points)); % Row indices
         cIndex = round(linspace(xc(1), xc(2), Points)); % Column indices
         lindex = sub2ind([sx sy], rIndex,cIndex); % Linear indices
-        neuron.indices.axon(i) = lindex(:);
+        neuron.indices(i).axon = lindex(:);
         for j = 1:length(electrode.x)
             neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % Stores information on the axon morphology to calculate current backpropogation
             neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^2)); % Summation 1/r^2 area component of soma
@@ -316,23 +320,24 @@ population.oscillatory = zeros(sx,sy); % Population of oscillating neurons
 population.all = zeros(sx,sy); % population of all elements
 
 for i = 1:NumNeurons
-    if neuron.type(i) == 1
+    if neuron.type(i) == 1 % Inhibitory Neuron
         if neuron.oscillatorytype(i) == 1 % If true, this neuron oscillates
-            population.oscillatory(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
+            population.oscillatory(neuron.indices(i).soma) = 1;
         end
-        population.inhibitory(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
-    else
+        population.inhibitory(neuron.indices(i).soma) = 1;
+    else % Excitatory Neuron
         if length(intersect(i,neuron.motion.number)) == 1 % If true, this neuron is a motion neuron
-            population.motion(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
+            population.motion(neuron.indices(i).soma) = 1;
         end
-        population.excitatory(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
+        population.excitatory(neuron.indices(i).soma) = 1;
     end
-    population.axon(neuron.indices.axon(i)) = 1; % Creates axon indices population map
+    population.axon(neuron.indices(i).axon) = 1; % Creates axon indices population map
 end
+population.all = population.excitatory + population.inhibitory + population.axon;
 population.all(population.all > 1) = 1; % Filters down any values to 1
 
 % Plotting test:
-figure; imagesc(population.all);
+%figure; imagesc(population.all); colorbar;
 %% Directional Current Multiplier
 Directional_Current_Mult = zeros(NumNeurons,length(electrode.x));
 Axon_Direction_Theta = zeros(NumNeurons,1);
