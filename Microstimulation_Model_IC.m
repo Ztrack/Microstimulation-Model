@@ -37,7 +37,7 @@ neuron.motif = repmat(1:1:NumMotifs,NumNeuronsMotif,1); neuron.motif = neuron.mo
 neuron.inhibitory = find(neuron.type == 1); % Array with all inhibitory neurons
 neuron.excitatory = find(neuron.type == 2); % Array with all Excitatory neurons
 neuron.motion.number = sort(neuron.excitatory(randperm(length(neuron.excitatory),floor(length(neuron.excitatory)*NeuronMotionRatio)))); % Neurons selected for motion
-neuron.nonMotion.number = ones(NumNeurons,1); neuron.nonMotion.number(neuron.motion.number) = 0; neuron.nonMotion.number = find(neuron.nonMotion.number == 1); % Non-Motion neurons
+neuron.nonmotion.number = ones(NumNeurons,1); neuron.nonmotion.number(neuron.motion.number) = 0; neuron.nonmotion.number = find(neuron.nonmotion.number == 1); % Non-Motion neurons
 neuron.motion.direction = randi([1,2],[1,length(neuron.motion.number)]); % Gives every motion neuron an orientation 0 or 90 degrees
 
 
@@ -160,6 +160,7 @@ end
 
 for i = 1:NumMotifs
     axonmap = zeros(sx,sy); % reset axonmap
+    
     % Axon hub line
     x = find(neuron.motif == i);
     xc = [min(neuron.x(x)) max(neuron.x(x))];
@@ -170,10 +171,14 @@ for i = 1:NumMotifs
     lindex = sub2ind(size(axonmap), rIndex, cIndex); % Linear indices
     axonmap(lindex) = 1;
     
-    % Axon connectiotion from neuron to hub line
+    % Axon connection from neuron to hub line
     for ii = 1:length(x)
-        xc = [neuron.x(x(ii)) neuron.x(x(ii))];
-        yc = [neuron.y(x(ii)) motif.center.y(i)];
+        xc = [neuron.x(x(ii)) neuron.x(x(ii))]; % Line does not move in x direction
+        if (neuron.y(x(ii)) - motif.center.y(i)) > 0 % If the neuron is above the center
+            yc = [neuron.y(x(ii))-neuron.radii-1 motif.center.y(i)]; % Create a line down to center
+        else
+            yc = [neuron.y(x(ii))+neuron.radii+1 motif.center.y(i)]; % Otherwise create line up to center
+        end
         Points = max(abs(diff(xc)), abs(diff(yc)))+1; % Number of points in line
         rIndex = round(linspace(yc(1), yc(2), Points)); % Row indices
         cIndex = round(linspace(xc(1), xc(2), Points)); % Column indices
@@ -216,6 +221,10 @@ for i = 1:NumMotifs
             
         end
     end
+end
+
+for i = 1:NumNeurons
+   neuron.pad(i) = motif.pad(neuron.motif(i)); % Stores which pad a neuron belongs to
 end
 
 % Neuron Soma Indices
@@ -265,8 +274,8 @@ for i = 1:NumNeurons
         neuron.direction(i) = randi([1,4],1,1); % 1 = x value down (left),2 = Y value down (up), 3 = X value up (right), 4 = Y value up (down)
         re = [0,0,0,0]; re(neuron.direction(i)) = 1; % Random element selection to choose orientation of axon
         rl = randi([50+neuron.radii,480+neuron.radii],1); % Random length of axon + neuron.radii
-        xc = [neuron.x(i)+(re(3)*neuron.radii)-(re(1)*neuron.radii) neuron.x(i)+(re(3)*rl)-(re(1)*rl)]; % x coordinates of neuron, axon point
-        yc = [neuron.y(i)+(re(4)*neuron.radii)-(re(2)*neuron.radii) neuron.y(i)+(re(4)*rl)-(re(2)*rl)]; % y coordinates of neuron, axon point
+        xc = [neuron.x(i)+(re(3)*neuron.radii+1)-(re(1)*neuron.radii-1) neuron.x(i)+(re(3)*rl)-(re(1)*rl)]; % x coordinates of neuron, axon point
+        yc = [neuron.y(i)+(re(4)*neuron.radii+1)-(re(2)*neuron.radii-1) neuron.y(i)+(re(4)*rl)-(re(2)*rl)]; % y coordinates of neuron, axon point
         if xc(2) <= 0 % Simple filter Makes sure the axon end does not go out of bounds in x
             xc(2) = 1;
         elseif xc(2) >= sx
@@ -313,31 +322,40 @@ end
 
 %% Population Maps
 
-population.inhibitory = zeros(sx,sy); % Inhibitory neuron population map
-population.excitatory = zeros(sx,sy); % Excitatory neuron population map
-population.axon = zeros(sx,sy); % Axon only population map
-population.oscillatory = zeros(sx,sy); % Population of oscillating neurons
-population.all = zeros(sx,sy); % population of all elements
+population.inhibitory.map = zeros(sx,sy); % Inhibitory neuron population map
+population.excitatory.map = zeros(sx,sy); % Excitatory neuron population map
+population.axon.map = zeros(sx,sy); % Axon only population map
+population.oscillatory.map = zeros(sx,sy); % Population of oscillating neurons
+population.motion.map = zeros(sx,sy); % Motion-Tuned Neuron Population
+population.all.map = zeros(sx,sy); % population of all elements
 
 for i = 1:NumNeurons
     if neuron.type(i) == 1 % Inhibitory Neuron
         if neuron.oscillatorytype(i) == 1 % If true, this neuron oscillates
-            population.oscillatory(neuron.indices(i).soma) = 1;
+            population.oscillatory.map(neuron.indices(i).soma) = 1;
         end
-        population.inhibitory(neuron.indices(i).soma) = 1;
+        population.inhibitory.map(neuron.indices(i).soma) = 1;
     else % Excitatory Neuron
         if length(intersect(i,neuron.motion.number)) == 1 % If true, this neuron is a motion neuron
-            population.motion(neuron.indices(i).soma) = 1;
+            population.motion.map(neuron.indices(i).soma) = 1;
         end
-        population.excitatory(neuron.indices(i).soma) = 1;
+        population.excitatory.map(neuron.indices(i).soma) = 1;
     end
-    population.axon(neuron.indices(i).axon) = 1; % Creates axon indices population map
+    population.axon.map(neuron.indices(i).axon) = 1; % Creates axon indices population map
 end
-population.all = population.excitatory + population.inhibitory + population.axon;
-population.all(population.all > 1) = 1; % Filters down any values to 1
+population.all.map = population.excitatory.map + population.inhibitory.map + population.axon.map;
+population.all.map(population.all.map > 1) = 1; % Filters down any values to 1
+
+% Storing Indices
+population.inhibitory.indices = find(population.inhibitory.map > 0);
+population.excitatory.indices = find(population.excitatory.map > 0);
+population.axon.indices = find(population.axon.map > 0);
+population.oscillatory.indices = find(population.oscillatory.map > 0);
+population.motion.indices = find(population.motion.map > 0);
 
 % Plotting test:
-%figure; imagesc(population.all); colorbar;
+%figure; imagesc(population.all.map); colorbar;
+
 %% Directional Current Multiplier
 Directional_Current_Mult = zeros(NumNeurons,length(electrode.x));
 Axon_Direction_Theta = zeros(NumNeurons,1);
