@@ -105,7 +105,7 @@ for i = 1:NumPads
     end
 end
 
-ii = 1; ClosestMotif = 0; MotifLength = 50; MinimumMotifDistance = MotifLength*sqrt(2);
+ii = 1; ClosestMotif = 0; MotifLength = 50; MinimumMotifDistance = MotifLength*2;
 for i = 1:NumMotifs
     
     motif.pad(i) = ii;
@@ -148,18 +148,19 @@ for i = 1:NumNeurons
     
     while ClosestNeuron < MinimumNeuronDistance
         % Selects random X,Y Combination to test
+        r = randi([neuron.radii*3 MotifLength],1,1);
         
         if neuron.type(i) == 1 % If this is an inhibitory neuron
-            y2 = randi([y1+neuron.radii*3 y1+MotifLength],1,1); % it will lie somewhere above the center 
+            y2 = y1+r; % it will lie somewhere above the center 
         else
-            y2 = randi([y1-MotifLength y1-neuron.radii*3],1,1); % it will lie somewhere below the center 
+            y2 = y1-r; % it will lie somewhere below the center 
         end
         
         x2 = randi([x1-MotifLength x1+MotifLength],1,1); % Selects random X,Y Combination to test
         ClosestNeuron = min(sqrt((x2 - neuron.x).^2 + (y2 - neuron.y).^2)); % Determines ecleudian distance between test xy and all motifs
-        neuron.x(i) = x2;
-        neuron.y(i) = y2;
     end
+    neuron.x(i) = x2;
+    neuron.y(i) = y2;
     ClosestNeuron = 0; % Reset value for closest motif distance
 end
 

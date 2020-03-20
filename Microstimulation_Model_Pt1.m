@@ -1,5 +1,5 @@
 clearvars; clc; close all;
-load('InitialConditionsFull.mat')
+load('InitialConditionsFullB.mat')
 set(groot,'defaultLineLineWidth',2.0)
 set(0,'defaultAxesFontSize',14)
 set(0,'defaultAxesLineWidth',3)
