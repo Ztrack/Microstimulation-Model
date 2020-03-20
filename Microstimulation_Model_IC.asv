@@ -143,10 +143,12 @@ MinimumNeuronDistance = neuron.radii*4 + 1;
 ClosestNeuron = 0; 
 neuron.x(i) = 1; neuron.y(i) = 1; % Initialize
 for i = 1:NumNeurons
-    x1 = motif.center.x(neuron.motif(i));
-    y1 = motif.center.y(neuron.motif(i));
+    x1 = motif.center.x(neuron.motif(i)); % X Value of motif center
+    y1 = motif.center.y(neuron.motif(i)); % Y value of motif center
     
     while ClosestNeuron < MinimumNeuronDistance
+        if
+            
         y2 = randi([y1-MotifLength y1+MotifLength],1,1); % Selects random X,Y Combination to test
         x2 = randi([x1-MotifLength x1+MotifLength],1,1); % Selects random X,Y Combination to test
         ClosestNeuron = min(sqrt((x2 - neuron.x).^2 + (y2 - neuron.y).^2)); % Determines ecleudian distance between test xy and all motifs
@@ -394,4 +396,4 @@ end
 %% Cleaning output
 
 clear ('Stim_Distance_Map','rp','rp_x','rp_y','Stim_Distance','Stim_Loc','PadSize','Neuron_points_Matrix','Ed');
-save InitialConditionsFull.mat;
+save InitialConditionsFullB.mat;

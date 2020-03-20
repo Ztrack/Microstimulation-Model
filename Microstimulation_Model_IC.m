@@ -143,11 +143,18 @@ MinimumNeuronDistance = neuron.radii*4 + 1;
 ClosestNeuron = 0; 
 neuron.x(i) = 1; neuron.y(i) = 1; % Initialize
 for i = 1:NumNeurons
-    x1 = motif.center.x(neuron.motif(i));
-    y1 = motif.center.y(neuron.motif(i));
+    x1 = motif.center.x(neuron.motif(i)); % X Value of motif center
+    y1 = motif.center.y(neuron.motif(i)); % Y value of motif center
     
     while ClosestNeuron < MinimumNeuronDistance
-        y2 = randi([y1-MotifLength y1+MotifLength],1,1); % Selects random X,Y Combination to test
+        % Selects random X,Y Combination to test
+        
+        if neuron.type(i) == 1 % If this is an inhibitory neuron
+            y2 = randi([y1+neuron.radii*3 y1+MotifLength],1,1); % it will lie somewhere above the center 
+        else
+            y2 = randi([y1-MotifLength y1-neuron.radii*3],1,1); % it will lie somewhere below the center 
+        end
+        
         x2 = randi([x1-MotifLength x1+MotifLength],1,1); % Selects random X,Y Combination to test
         ClosestNeuron = min(sqrt((x2 - neuron.x).^2 + (y2 - neuron.y).^2)); % Determines ecleudian distance between test xy and all motifs
         neuron.x(i) = x2;
@@ -274,8 +281,8 @@ for i = 1:NumNeurons
         neuron.direction(i) = randi([1,4],1,1); % 1 = x value down (left),2 = Y value down (up), 3 = X value up (right), 4 = Y value up (down)
         re = [0,0,0,0]; re(neuron.direction(i)) = 1; % Random element selection to choose orientation of axon
         rl = randi([50+neuron.radii,480+neuron.radii],1); % Random length of axon + neuron.radii
-        xc = [neuron.x(i)+(re(3)*neuron.radii+1)-(re(1)*neuron.radii-1) neuron.x(i)+(re(3)*rl)-(re(1)*rl)]; % x coordinates of neuron, axon point
-        yc = [neuron.y(i)+(re(4)*neuron.radii+1)-(re(2)*neuron.radii-1) neuron.y(i)+(re(4)*rl)-(re(2)*rl)]; % y coordinates of neuron, axon point
+        xc = [neuron.x(i)+(re(3)*neuron.radii)-(re(1)*neuron.radii) neuron.x(i)+(re(3)*rl)-(re(1)*rl)]; % x coordinates of neuron, axon point
+        yc = [neuron.y(i)+(re(4)*neuron.radii)-(re(2)*neuron.radii) neuron.y(i)+(re(4)*rl)-(re(2)*rl)]; % y coordinates of neuron, axon point
         if xc(2) <= 0 % Simple filter Makes sure the axon end does not go out of bounds in x
             xc(2) = 1;
         elseif xc(2) >= sx
