@@ -73,9 +73,9 @@ hold on
 options.color_area = [255 0 0]./255; % Red : Inhibitory
 options.color_line = [255 0 0]./255;
 plot_areaerrorbar(Neuron_Excited_Per_Step3,options); xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt*h); 
-title('Neuron Activation Through Center Electrode'); xlabel('Center Electrode Current AU'); ylabel('Percentage Activated Neurons');
+title('Excitatory / Inhibitory Activation Through Center Electrode'); xlabel('Center Electrode Current AU'); ylabel('Percentage Activated Neurons');
 xline(find(mean(Neuron_Excited_Per_Step2) >= 50,1),'color','blue'); xline(find(mean(Neuron_Excited_Per_Step3) >= 50,1),'color','red'); 
-legend('','Excitatory','','Inhibitory','50% Inhibitory','50% Excitatory'); 
+legend('','Excitatory','','Inhibitory','50% Excitatory','50% Inhibitory'); 
 ylim([0 100]);
 disp((find(mean(Neuron_Excited_Per_Step2) >= 50,1)-(find(mean(Neuron_Excited_Per_Step3) >= 50,1)))*50)
 hold off
@@ -97,30 +97,34 @@ hold off
 
 % Plot of % neurons activated for every pad
 
+for i = 1:NumPads
+    pad.numneurons(i) = sum(neuron.pad == i); % Sums number of neurons per pad
+end
+
 Neuron_Excited_Per_Step_Per_Pad = zeros(NumPads,numrepeats,length(I0)); % Calculates the number of neurons excited at every step of current
 for j = 1:NumPads
 for i = 1:length(I0)
-    Neuron_Excited_Per_Step_Per_Pad(j,:,i) = sum(Neuron_RB(:,neuron.pad == j)                          <=I0(i),2)*100/(sum(neuron.pad == j));
+    Neuron_Excited_Per_Step_Per_Pad(j,:,i) = sum(Neuron_RB(:,neuron.pad == j)                          <=I0(i),2)*100/pad.numneurons(j);
 end
 end
 
-pad11 = squeeze(mean(Neuron_Excited_Per_Step_Per_Pad(11,:,:)));
+%Colormap for colors
 map = [0 0 0; 239 122 37; 81 182 106; 50 127 183; 152 85 159; 225 152 153;]./255; % Colormap. First number is 0, then 1 to 15.
 c1 = .85;
 c2 = .7;
 map = [map ; map(2,1:3)*c1 ; map(3,1:3)*c1 ; map(4,1:3)*c1 ; map(5,1:3)*c1 ; map(6,1:3)*c1];
 map = [map ; 1 1 1 ; map(3,1:3)*c2 ; map(4,1:3)*c2 ; map(5,1:3)*c2 ; map(6,1:3)*c2];
 
+% Cumulative pad summation
+pad.away(1).num = 8; Cumulative_Activation(1,:,:) = Neuron_Excited_Per_Step_Per_Pad(pad.away(1).num,:,:); % 0 pads away
+pad.away(2).num = [7 9 3 13]; Cumulative_Activation(2,:,:) = mean(Neuron_Excited_Per_Step_Per_Pad(pad.away(2).num,:,:)); % 1 pads away
+pad.away(3).num = [2 4 12 14]; Cumulative_Activation(3,:,:) = mean(Neuron_Excited_Per_Step_Per_Pad(pad.away(3).num,:,:)); % 1.5 pads away
+pad.away(4).num = [6 10]; Cumulative_Activation(4,:,:) = mean(Neuron_Excited_Per_Step_Per_Pad(pad.away(4).num,:,:)); % 2 pads away
+pad.away(5).num = [1 5 11 15]; Cumulative_Activation(5,:,:) = mean(Neuron_Excited_Per_Step_Per_Pad(pad.away(5).num,:,:)); % 2.5 pads away
 
-n = 8; Cumulative_Activation(1,:,:) = Neuron_Excited_Per_Step_Per_Pad(n,:,:); % 0 pads away
-n = [7 9 3 13]; Cumulative_Activation(2,:,:) = mean(Neuron_Excited_Per_Step_Per_Pad(n,:,:)); % 1 pads away
-n = [2 4 12 14]; Cumulative_Activation(3,:,:) = mean(Neuron_Excited_Per_Step_Per_Pad(n,:,:)); % 1.5 pads away
-n = [6 10]; Cumulative_Activation(4,:,:) = mean(Neuron_Excited_Per_Step_Per_Pad(n,:,:)); % 2 pads away
-n = [1 5 11 15]; Cumulative_Activation(5,:,:) = mean(Neuron_Excited_Per_Step_Per_Pad(n,:,:)); % 2.5 pads away
-
-options.handle     = figure; set(gcf,'Position',[100 100 800 700]);
-j = 1;
-options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerrorbar(squeeze(Cumulative_Activation(j,:,:)*1.06),options); hold on; j = j+1;
+%Plotting figure for cumulative pad summation
+options.handle     = figure; set(gcf,'Position',[100 100 800 700]); j = 1;
+options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerrorbar(squeeze(Cumulative_Activation(j,:,:)),options); hold on; j = j+1;
 options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerrorbar(squeeze(Cumulative_Activation(j,:,:)),options); hold on; j = j+1;
 options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerrorbar(squeeze(Cumulative_Activation(j,:,:)),options); hold on; j = j+1;
 options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerrorbar(squeeze(Cumulative_Activation(j,:,:)),options); hold on; j = j+1;
@@ -171,24 +175,37 @@ hold off
 % hold off; 
 
 % Fraction of cells activated within and across pads that are activated from microstim in the mid pad (M3)
-% figure; set(gcf,'Position',[100 100 800 700]);
-% RB_Pad = zeros(NumPads,1);
-% for i = 1:NumPads
-%     RB_Pad(i) = nanmean(Neuron_RB(1,neuron.pad == i)); % Rheobase for each pad
-%     plot(DistancePads(8,i),RB_Pad(i),'.','DisplayName',num2str(i)); xlim([-50 3000]);
-%     hold on
-% end
-% legend show; title('Average Pad RB vs Distance to Stimulus'); xlabel('Distance to stimulus um'); ylabel('Stimulus AU');
-% hold off; 
+figure; set(gcf,'Position',[100 100 800 700]);
+RB_Pad = zeros(NumPads,1);
+for i = 1:NumPads
+    RB_Pad(i) = nanmean(Neuron_RB(1,neuron.pad == i)); % Rheobase for each pad
+    plot(DistancePads(8,i),RB_Pad(i),'.','DisplayName',num2str(i)); xlim([-50 3000]);
+    hold on
+end
+legend show; title('Average Pad RB vs Distance to Stimulus'); xlabel('Distance to stimulus um'); ylabel('Stimulus AU');
+hold off; 
 
 
 
-%% Box plots 1
-NumNeuronsPerPad = NumMotifsPerPad*NumNeuronsMotif;
-CH_M3 = RB_Pad(8)*2; % Chronaxi for mid pad, M3
+%% Box plots for mean & PCT M3 Neurons
+
+pct = [NaN,25,100];
+for i = 1:5
+cumneurons(i) = sum(pad.numneurons(pad.away(i).num));
+end
+
+for ii = 1:length(pct)
+if ii == 1
+    string = 'Current Stimulation = Average Chronaxi of M3 Neurons';
+    CH_M3 = RB_Pad(8)*2;
+else
+    string = ['Current Stimulation = Chronaxi of ' num2str(pct(ii)) '% M3 Neurons'];
+    CH_M3 = prctile(nanmean(Neuron_RB(:,find(neuron.pad == 8))),pct(ii))*2;
+end
+
 Neuron_Activated = (mean(Neuron_RB) < CH_M3); % Stores if the neuron was activated for this applied stimulus
 Neuron_Activated = find(Neuron_Activated == 1);
-a = [Neuron_Activated',neuron.pad(Neuron_Activated)];
+a = [Neuron_Activated',neuron.pad(Neuron_Activated)'];
 b1 = a(:,2) == 3 | a(:,2) == 7 | a(:,2) == 9 | a(:,2) == 13;
 b2 = a(:,2) == 2 | a(:,2) == 4 | a(:,2) == 12 | a(:,2) == 14;
 b3 = a(:,2) == 6 | a(:,2) == 10;
@@ -198,44 +215,46 @@ onepointfivepadsaway = a(b2);
 twopadsaway = a(b3);
 twopointfivepadsaway = a(b4);
 
+% Plotting Number of neurons stimulated when x pads away
+x= [1 1.5 2 2.5]; % 1 - 2.5 pads away
 
 y= [length(onepadsaway) length(onepointfivepadsaway) length(twopadsaway) length(twopointfivepadsaway)]; % Number Neurons activated
-x= [1 1.5 2 2.5]; % 1 - 2.5 pads away
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by Pad M3 Chronaxi'); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated');
-y= [length(onepadsaway).*100/(NumNeuronsPerPad*4) length(onepointfivepadsaway).*100/(NumNeuronsPerPad*4) length(twopadsaway).*100/(NumNeuronsPerPad*2) length(twopointfivepadsaway).*100/(NumNeuronsPerPad*4)]; % Number Neurons activated
-x= [1 1.5 2 2.5]; % 1 - 2.5 pads away
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated By Pad M3 Chronaxi'); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated');
+figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title(string); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated');
+%y= [length(onepadsaway).*100/(cumneurons(2)) length(onepointfivepadsaway).*100/(cumneurons(3)) length(twopadsaway).*100/(cumneurons(4)*2) length(twopointfivepadsaway).*100/(cumneurons(5))]; % Number Neurons activated
+%figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title(string); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated');
+y= [length(onepadsaway) length(onepointfivepadsaway) length(twopadsaway) length(twopointfivepadsaway)]/length(onepadsaway); % Number Neurons activated
+figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title(string); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated');
 
-Neuron_Type2 = zeros(NumNeurons,1); Neuron_Type2(neuron.motion.number) = 1; Neuron_Type2(neuron.nonmotion.number) = 2;
-a = 100/(NumNeuronsPerPad*4*(4/5)); b = 100/(NumNeuronsPerPad*4*(1/5));
-y= [sum(c(onepadsaway) == 1) sum(c(onepadsaway) == 2) sum(Neuron_Type2(onepadsaway) == 2) sum(Neuron_Type2(onepadsaway) == 3);sum(c(onepointfivepadsaway) == 1) sum(c(onepointfivepadsaway) == 2) sum(Neuron_Type2(onepointfivepadsaway) == 2) sum(Neuron_Type2(onepointfivepadsaway) == 3);sum(c(twopadsaway) == 1) sum(c(twopadsaway) == 2) sum(Neuron_Type2(twopadsaway) == 2) sum(Neuron_Type2(twopadsaway) == 3);sum(c(twopointfivepadsaway) == 1) sum(c(twopointfivepadsaway) == 2) sum(Neuron_Type2(twopointfivepadsaway) == 2) sum(Neuron_Type2(twopointfivepadsaway) == 3)];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by Pad M3 Chronaxi'); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated'); legend('Excitatory Motion','Excitatory Non-Motion','Inhibitory','Inhibitory Oscillatory');
-y= [sum(Neuron_Type(onepadsaway) == 2)*a sum(Neuron_Type2(onepadsaway) == 2)*b sum(Neuron_Type2(onepadsaway) == 3)*b;sum(Neuron_Type(onepointfivepadsaway) == 2)*a sum(Neuron_Type2(onepointfivepadsaway) == 2)*b sum(Neuron_Type2(onepointfivepadsaway) == 3)*b;sum(Neuron_Type(twopadsaway) == 2)*a sum(Neuron_Type2(twopadsaway) == 2)*b sum(Neuron_Type2(twopadsaway) == 3)*b;sum(Neuron_Type(twopointfivepadsaway) == 2)*a sum(Neuron_Type2(twopointfivepadsaway) == 2)*b sum(Neuron_Type2(twopointfivepadsaway) == 3)*b];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by Pad M3 Chronaxi'); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated'); legend('Excitatory','Inhibitory','Inhibitory Oscillatory');
+% Plotting number of excitatory/inhibitory neurons stimulated when x
+% pads away
+y= [sum(neuron.type(onepadsaway) == 2) sum(neuron.type(onepadsaway) == 1);sum(neuron.type(onepointfivepadsaway) == 2) sum(neuron.type(onepointfivepadsaway) == 1);sum(neuron.type(twopadsaway) == 2) sum(neuron.type(twopadsaway) == 1); sum(neuron.type(twopointfivepadsaway) == 2) sum(neuron.type(twopointfivepadsaway) == 1)];
+figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title(string); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated'); legend('Excitatory','Inhibitory');
+y= [sum(neuron.type(onepadsaway) == 2) sum(neuron.type(onepadsaway) == 1);sum(neuron.type(onepointfivepadsaway) == 2) sum(neuron.type(onepointfivepadsaway) == 1);sum(neuron.type(twopadsaway) == 2) sum(neuron.type(twopadsaway) == 1); sum(neuron.type(twopointfivepadsaway) == 2) sum(neuron.type(twopointfivepadsaway) == 1)]/sum(neuron.type(onepadsaway) == 2);
+figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title(string); xlabel('Number of Pads Away'); ylabel('Neurons Stimulated Normalized'); legend('Excitatory','Inhibitory');
 
+% Plotting number of motion / non motion tuned neurons stimulated when x
+% pads away
 Motion_Designation = ones(NumNeurons,1); Motion_Designation(neuron.motion.number) = 1; Motion_Designation(neuron.nonmotion.number) = 2;
 y= [sum(Motion_Designation(onepadsaway) == 1) sum(Motion_Designation(onepadsaway) == 2);sum(Motion_Designation(onepointfivepadsaway) == 1) sum(Motion_Designation(onepointfivepadsaway) == 2);sum(Motion_Designation(twopadsaway) == 1) sum(Motion_Designation(twopadsaway) == 2);sum(Motion_Designation(twopointfivepadsaway) == 1) sum(Motion_Designation(twopointfivepadsaway) == 2)];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by Pad M3 Chronaxi'); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated'); legend('Motion','Non-Motion');
-y= [sum(Motion_Designation(onepadsaway) == 1).*100/(NumNeuronsPerPad*4*(.3)) sum(Motion_Designation(onepadsaway) == 2).*100/(NumNeuronsPerPad*4*(.7));sum(Motion_Designation(onepointfivepadsaway) == 1).*100/(NumNeuronsPerPad*4*(.3)) sum(Motion_Designation(onepointfivepadsaway) == 2).*100/(NumNeuronsPerPad*4*(.7));sum(Motion_Designation(twopadsaway) == 1).*100/(NumNeuronsPerPad*4*(.3)) sum(Motion_Designation(twopadsaway) == 2).*100/(NumNeuronsPerPad*4*(.7));sum(Motion_Designation(twopointfivepadsaway) == 1).*100/(NumNeuronsPerPad*4*(.3)) sum(Motion_Designation(twopointfivepadsaway) == 2).*100/(NumNeuronsPerPad*4*(.7))];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by Pad M3 Chronaxi'); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated'); legend('Motion','Non-Motion');
+figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title(string); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated'); legend('Motion','Non-Motion');
+%y= [sum(Motion_Designation(onepadsaway) == 1).*100/(cumneurons(2)*(.2)) sum(Motion_Designation(onepadsaway) == 2).*100/(cumneurons(2)*(.8));sum(Motion_Designation(onepointfivepadsaway) == 1).*100/(cumneurons(3)*(.2)) sum(Motion_Designation(onepointfivepadsaway) == 2).*100/(cumneurons(3)*(.8));sum(Motion_Designation(twopadsaway) == 1).*100/(cumneurons(4)*(.2)) sum(Motion_Designation(twopadsaway) == 2).*100/(cumneurons(4)*(.8));sum(Motion_Designation(twopointfivepadsaway) == 1).*100/(cumneurons(5)*(.2)) sum(Motion_Designation(twopointfivepadsaway) == 2).*100/(cumneurons(5)*(.8))];
+%figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title(string); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated'); legend('Motion','Non-Motion');
 y= [sum(Motion_Designation(onepadsaway) == 1) sum(Motion_Designation(onepadsaway) == 2);sum(Motion_Designation(onepointfivepadsaway) == 1) sum(Motion_Designation(onepointfivepadsaway) == 2);sum(Motion_Designation(twopadsaway) == 1) sum(Motion_Designation(twopadsaway) == 2);sum(Motion_Designation(twopointfivepadsaway) == 1) sum(Motion_Designation(twopointfivepadsaway) == 2)]/sum(Motion_Designation(onepadsaway) == 1);
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by Pad M3 Chronaxi'); xlabel('Number of Pads Away'); ylabel('Neurons Stimulated Normalized'); legend('Motion','Non-Motion');
+figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title(string); xlabel('Number of Pads Away'); ylabel('Neurons Stimulated Normalized'); legend('Motion','Non-Motion');
 
-PadMatrix = zeros(sx,sy); px=sx/5; py=sy/3;
-PadPercent = [y(4) y(2) y(1) y(2) y(4) y(3) y(1) 100 y(1) y(3) y(4) y(2) y(1) y(2) y(4)];
-for i = 1:NumPads
-    rangex = ((Padloc(i,3)-1)*px)+1:(Padloc(i,3)*px)-1;
-    rangey = ((Padloc(i,2)-1)*py)+1:(Padloc(i,2)*py)-1;
-    PadMatrix(rangey,rangex) = PadPercent(i);
 end
-figure; set(gcf,'Position',[100 100 800 700]); imagesc(PadMatrix); colorbar; title('Percent Neurons Activated By M3 Chronaxi'); xlabel('Position X'); ylabel('Position Y');
 
-%% Box plots 2
-% CH For 25% of M3 Neurons
-CH_M3_25 = 325*2;
-Neuron_Activated = (mean(Neuron_RB) < CH_M3_25); % Stores if the neuron was activated for this applied stimulus
+%% Box plots for % Motion-Tuned
+
+pct = [25];
+for ii = 1:length(pct)
+
+string = ['Current Stimulation = Chronaxi of ' num2str(pct(ii)) '% Motion Neurons'];
+CH_M3 = prctile(nanmean(Neuron_RB(:,neuron.motion.number)),pct(ii))*2;
+
+Neuron_Activated = (mean(Neuron_RB) < CH_M3); % Stores if the neuron was activated for this applied stimulus
 Neuron_Activated = find(Neuron_Activated == 1);
-a = [Neuron_Activated',neuron.pad(Neuron_Activated)];
+a = [Neuron_Activated',neuron.pad(Neuron_Activated)'];
 b1 = a(:,2) == 3 | a(:,2) == 7 | a(:,2) == 9 | a(:,2) == 13;
 b2 = a(:,2) == 2 | a(:,2) == 4 | a(:,2) == 12 | a(:,2) == 14;
 b3 = a(:,2) == 6 | a(:,2) == 10;
@@ -245,122 +264,42 @@ onepointfivepadsaway = a(b2);
 twopadsaway = a(b3);
 twopointfivepadsaway = a(b4);
 
-a = 100/(NumNeuronsPerPad*4); 
-x= [1 1.5 2 2.5]; % 1 - 2.5 pads away
-y= [length(onepadsaway)*a length(onepointfivepadsaway)*a length(twopadsaway)*a length(twopointfivepadsaway)*a]; % Number Neurons activated
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 25% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated');
-y= [length(onepadsaway) length(onepointfivepadsaway) length(twopadsaway) length(twopointfivepadsaway)]; % Number Neurons activated
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 25% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated');
-
-a = 100/(NumNeuronsPerPad*4*(4/5)); b = 100/(NumNeuronsPerPad*4*(1/5));
-y= [sum(Neuron_Type(onepadsaway) == 2) sum(Neuron_Type2(onepadsaway) == 2) sum(Neuron_Type2(onepadsaway) == 3);sum(Neuron_Type(onepointfivepadsaway) == 2) sum(Neuron_Type2(onepointfivepadsaway) == 2) sum(Neuron_Type2(onepointfivepadsaway) == 3);sum(Neuron_Type(twopadsaway) == 2) sum(Neuron_Type2(twopadsaway) == 2) sum(Neuron_Type2(twopadsaway) == 3);sum(Neuron_Type(twopointfivepadsaway) == 2) sum(Neuron_Type2(twopointfivepadsaway) == 2) sum(Neuron_Type2(twopointfivepadsaway) == 3)];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 25% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated'); legend('Excitatory','Inhibitory','Inhibitory Oscillatory');
-y= [sum(Neuron_Type(onepadsaway) == 2)*a sum(Neuron_Type2(onepadsaway) == 2)*b sum(Neuron_Type2(onepadsaway) == 3)*b;sum(Neuron_Type(onepointfivepadsaway) == 2)*a sum(Neuron_Type2(onepointfivepadsaway) == 2)*b sum(Neuron_Type2(onepointfivepadsaway) == 3)*b;sum(Neuron_Type(twopadsaway) == 2)*a sum(Neuron_Type2(twopadsaway) == 2)*b sum(Neuron_Type2(twopadsaway) == 3)*b;sum(Neuron_Type(twopointfivepadsaway) == 2)*a sum(Neuron_Type2(twopointfivepadsaway) == 2)*b sum(Neuron_Type2(twopointfivepadsaway) == 3)*b];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 25% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated'); legend('Excitatory','Inhibitory','Inhibitory Oscillatory');
-
-a = 100/(NumNeuronsPerPad*4*(.3)); b = 100/(NumNeuronsPerPad*4*(.7));
-Motion_Designation = ones(NumNeurons,1); Motion_Designation(neuron.motion.number) = 1; Motion_Designation(neuron.nonmotion.number) = 2;
-y= [sum(Motion_Designation(onepadsaway) == 1)*a sum(Motion_Designation(onepadsaway) == 2)*b;sum(Motion_Designation(onepointfivepadsaway) == 1)*a sum(Motion_Designation(onepointfivepadsaway) == 2)*b;sum(Motion_Designation(twopadsaway) == 1)*a sum(Motion_Designation(twopadsaway) == 2)*b;sum(Motion_Designation(twopointfivepadsaway) == 1)*a sum(Motion_Designation(twopointfivepadsaway) == 2)*b];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 25% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated'); legend('Motion','Non-Motion');
-y= [sum(Motion_Designation(onepadsaway) == 1) sum(Motion_Designation(onepadsaway) == 2);sum(Motion_Designation(onepointfivepadsaway) == 1) sum(Motion_Designation(onepointfivepadsaway) == 2);sum(Motion_Designation(twopadsaway) == 1) sum(Motion_Designation(twopadsaway) == 2);sum(Motion_Designation(twopointfivepadsaway) == 1) sum(Motion_Designation(twopointfivepadsaway) == 2)];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 25% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated'); legend('Motion','Non-Motion');
-y= [sum(Motion_Designation(onepadsaway) == 1) sum(Motion_Designation(onepadsaway) == 2);sum(Motion_Designation(onepointfivepadsaway) == 1) sum(Motion_Designation(onepointfivepadsaway) == 2);sum(Motion_Designation(twopadsaway) == 1) sum(Motion_Designation(twopadsaway) == 2);sum(Motion_Designation(twopointfivepadsaway) == 1) sum(Motion_Designation(twopointfivepadsaway) == 2)]/sum(Motion_Designation(onepadsaway) == 1);
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 25% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Neurons Stimulated Normalized'); legend('Motion','Non-Motion');
-
-%% Box plots 3
-% CH For 100% of M3 Neurons
-CH_M3_100 = I0(25)*2;
-Neuron_Activated = (mean(Neuron_RB) < CH_M3_100); % Stores if the neuron was activated for this applied stimulus
-Neuron_Activated = find(Neuron_Activated == 1);
-a = [Neuron_Activated',neuron.pad(Neuron_Activated)];
-b1 = a(:,2) == 3 | a(:,2) == 7 | a(:,2) == 9 | a(:,2) == 13;
-b2 = a(:,2) == 2 | a(:,2) == 4 | a(:,2) == 12 | a(:,2) == 14;
-b3 = a(:,2) == 6 | a(:,2) == 10;
-b4 = a(:,2) == 1 | a(:,2) == 5 | a(:,2) == 11 | a(:,2) == 15;
-onepadsaway = a(b1);
-onepointfivepadsaway = a(b2);
-twopadsaway = a(b3);
-twopointfivepadsaway = a(b4);
-
-y= [length(onepadsaway) length(onepointfivepadsaway) length(twopadsaway) length(twopointfivepadsaway)]; % Number Neurons activated
-x= [1 1.5 2 2.5]; % 1 - 2.5 pads away
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 100% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated');
-y= [length(onepadsaway).*100/(NumNeuronsPerPad*4) length(onepointfivepadsaway).*100/(NumNeuronsPerPad*4) length(twopadsaway).*100/(NumNeuronsPerPad*2) length(twopointfivepadsaway).*100/(NumNeuronsPerPad*4)]; % Number Neurons activated
-x= [1 1.5 2 2.5]; % 1 - 2.5 pads away
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 100% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated');
-
-c = zeros(NumNeurons,1); c(neuron.motion.number) = 1; c(neuron.nonmotion.number) = 2;
-a = 100/(NumNeuronsPerPad*4*(4/5)); b = 100/(NumNeuronsPerPad*4*(1/5));
-y= [sum(c(onepadsaway) == 1) sum(c(onepadsaway) == 2) sum(Neuron_Type2(onepadsaway) == 2) sum(Neuron_Type2(onepadsaway) == 3);sum(c(onepointfivepadsaway) == 1) sum(c(onepointfivepadsaway) == 2) sum(Neuron_Type2(onepointfivepadsaway) == 2) sum(Neuron_Type2(onepointfivepadsaway) == 3);sum(c(twopadsaway) == 1) sum(c(twopadsaway) == 2) sum(Neuron_Type2(twopadsaway) == 2) sum(Neuron_Type2(twopadsaway) == 3);sum(c(twopointfivepadsaway) == 1) sum(c(twopointfivepadsaway) == 2) sum(Neuron_Type2(twopointfivepadsaway) == 2) sum(Neuron_Type2(twopointfivepadsaway) == 3)];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 100% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated'); legend('Excitatory Motion','Excitatory Non-Motion','Inhibitory','Inhibitory Oscillatory');
-y= [sum(Neuron_Type(onepadsaway) == 2)*a sum(Neuron_Type2(onepadsaway) == 2)*b sum(Neuron_Type2(onepadsaway) == 3)*b;sum(Neuron_Type(onepointfivepadsaway) == 2)*a sum(Neuron_Type2(onepointfivepadsaway) == 2)*b sum(Neuron_Type2(onepointfivepadsaway) == 3)*b;sum(Neuron_Type(twopadsaway) == 2)*a sum(Neuron_Type2(twopadsaway) == 2)*b sum(Neuron_Type2(twopadsaway) == 3)*b;sum(Neuron_Type(twopointfivepadsaway) == 2)*a sum(Neuron_Type2(twopointfivepadsaway) == 2)*b sum(Neuron_Type2(twopointfivepadsaway) == 3)*b];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 100% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated'); legend('Excitatory','Inhibitory','Inhibitory Oscillatory');
-
+% Plotting number of motion / non motion tuned neurons stimulated when x
+% pads away
 Motion_Designation = ones(NumNeurons,1); Motion_Designation(neuron.motion.number) = 1; Motion_Designation(neuron.nonmotion.number) = 2;
 y= [sum(Motion_Designation(onepadsaway) == 1) sum(Motion_Designation(onepadsaway) == 2);sum(Motion_Designation(onepointfivepadsaway) == 1) sum(Motion_Designation(onepointfivepadsaway) == 2);sum(Motion_Designation(twopadsaway) == 1) sum(Motion_Designation(twopadsaway) == 2);sum(Motion_Designation(twopointfivepadsaway) == 1) sum(Motion_Designation(twopointfivepadsaway) == 2)];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 100% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated'); legend('Motion','Non-Motion');
-y= [sum(Motion_Designation(onepadsaway) == 1).*100/(NumNeuronsPerPad*4*(.3)) sum(Motion_Designation(onepadsaway) == 2).*100/(NumNeuronsPerPad*4*(.7));sum(Motion_Designation(onepointfivepadsaway) == 1).*100/(NumNeuronsPerPad*4*(.3)) sum(Motion_Designation(onepointfivepadsaway) == 2).*100/(NumNeuronsPerPad*4*(.7));sum(Motion_Designation(twopadsaway) == 1).*100/(NumNeuronsPerPad*4*(.3)) sum(Motion_Designation(twopadsaway) == 2).*100/(NumNeuronsPerPad*4*(.7));sum(Motion_Designation(twopointfivepadsaway) == 1).*100/(NumNeuronsPerPad*4*(.3)) sum(Motion_Designation(twopointfivepadsaway) == 2).*100/(NumNeuronsPerPad*4*(.7))];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 100% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated'); legend('Motion','Non-Motion');
+figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title(string); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated'); legend('Motion','Non-Motion');
+%y= [sum(Motion_Designation(onepadsaway) == 1).*100/(cumneurons(2)*(.2)) sum(Motion_Designation(onepadsaway) == 2).*100/(cumneurons(2)*(.8));sum(Motion_Designation(onepointfivepadsaway) == 1).*100/(cumneurons(3)*(.2)) sum(Motion_Designation(onepointfivepadsaway) == 2).*100/(cumneurons(3)*(.8));sum(Motion_Designation(twopadsaway) == 1).*100/(cumneurons(4)*(.2)) sum(Motion_Designation(twopadsaway) == 2).*100/(cumneurons(4)*(.8));sum(Motion_Designation(twopointfivepadsaway) == 1).*100/(cumneurons(5)*(.2)) sum(Motion_Designation(twopointfivepadsaway) == 2).*100/(cumneurons(5)*(.8))];
+%figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title(string); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated'); legend('Motion','Non-Motion');
 y= [sum(Motion_Designation(onepadsaway) == 1) sum(Motion_Designation(onepadsaway) == 2);sum(Motion_Designation(onepointfivepadsaway) == 1) sum(Motion_Designation(onepointfivepadsaway) == 2);sum(Motion_Designation(twopadsaway) == 1) sum(Motion_Designation(twopadsaway) == 2);sum(Motion_Designation(twopointfivepadsaway) == 1) sum(Motion_Designation(twopointfivepadsaway) == 2)]/sum(Motion_Designation(onepadsaway) == 1);
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 100% M3 Neurons'); xlabel('Number of Pads Away'); ylabel('Neurons Stimulated Normalized'); legend('Motion','Non-Motion');
+figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title(string); xlabel('Number of Pads Away'); ylabel('Neurons Stimulated Normalized'); legend('Motion','Non-Motion');
 
-%% Box plots 4
-% CH For 25% of ALL Motion Neurons
-CH_Motion_25 = prctile(nanmean(Neuron_RB(:,neuron.motion.number)),25)*2;
-Neuron_Activated = (mean(Neuron_RB) < CH_Motion_25); % Stores if the neuron was activated for this applied stimulus
-Neuron_Activated = find(Neuron_Activated == 1);
-a = [Neuron_Activated',neuron.pad(Neuron_Activated)];
-b1 = find(a(:,2) == 3 | a(:,2) == 7 | a(:,2) == 9 | a(:,2) == 13);
-b2 = find(a(:,2) == 2 | a(:,2) == 4 | a(:,2) == 12 | a(:,2) == 14);
-b3 = find(a(:,2) == 6 | a(:,2) == 10);
-b4 = find(a(:,2) == 1 | a(:,2) == 5 | a(:,2) == 11 | a(:,2) == 15);
-onepadsaway = a(b1);
-onepointfivepadsaway = a(b2);
-twopadsaway = a(b3);
-twopointfivepadsaway = a(b4);
-
-
-% a = 100/(NumNeuronsPerPad*4*(.3)); b = 100/(NumNeuronsPerPad*4*(.7));
-% Motion_Designation = ones(NumNeurons,1); Motion_Designation(neuron.motion.number) = 1; Motion_Designation(neuron.nonmotion.number) = 2;
-% y= [sum(Motion_Designation(onepadsaway) == 1)*a sum(Motion_Designation(onepadsaway) == 2)*b;sum(Motion_Designation(onepointfivepadsaway) == 1)*a sum(Motion_Designation(onepointfivepadsaway) == 2)*b;sum(Motion_Designation(twopadsaway) == 1)*a sum(Motion_Designation(twopadsaway) == 2)*b;sum(Motion_Designation(twopointfivepadsaway) == 1)*a sum(Motion_Designation(twopointfivepadsaway) == 2)*b];
-% figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 25% ALL Motion Neurons'); xlabel('Number of Pads Away'); ylabel('Percent Neurons Stimulated'); legend('Motion','Non-Motion');
-% y= [sum(Motion_Designation(onepadsaway) == 1) sum(Motion_Designation(onepadsaway) == 2);sum(Motion_Designation(onepointfivepadsaway) == 1) sum(Motion_Designation(onepointfivepadsaway) == 2);sum(Motion_Designation(twopadsaway) == 1) sum(Motion_Designation(twopadsaway) == 2);sum(Motion_Designation(twopointfivepadsaway) == 1) sum(Motion_Designation(twopointfivepadsaway) == 2)];
-% figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 25% ALL Motion Neurons'); xlabel('Number of Pads Away'); ylabel('Number Neurons Stimulated'); legend('Motion','Non-Motion');
-
-a = 100/(length(neuron.motion.number)); b = 100/(NumNeurons-length(neuron.motion.number));
-x = [1 2];
-y= [length(intersect(Neuron_Activated,neuron.motion.number))*a length(intersect(Neuron_Activated,neuron.nonmotion.number))*b; 0 0];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 25% ALL Motion Neurons'); xlabel('All Pads'); ylabel('Percent Neurons Stimulated'); legend('Motion','Non-Motion');
-y= [length(intersect(Neuron_Activated,neuron.motion.number)) length(intersect(Neuron_Activated,neuron.nonmotion.number)); 0 0];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 25% ALL Motion Neurons'); xlabel('All Pads'); ylabel('Number Neurons Stimulated'); legend('Motion','Non-Motion');
-y= [length(intersect(Neuron_Activated,neuron.motion.number)) length(intersect(Neuron_Activated,neuron.nonmotion.number)); 0 0]/length(intersect(Neuron_Activated,neuron.motion.number));
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Neurons Stimulated by CH of 25% ALL Motion Neurons'); xlabel('All Pads'); ylabel('Neurons Stimulated Normalized'); legend('Motion','Non-Motion');
-
+end
 
 %% Temp 
-% Plotting Ratio
-% Equation = (# of non-motion tuned) / (# of motion tuned)
-
-y= [90 279 ; 65 150];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Non-Optimized Vs Optimized Microstimulation'); xlabel('Non-Optimized Optimized'); ylabel('Number of Activated Neurons'); legend('Motion','Non-Motion');
-xlim([0.5 2.5]);
-
-y= [3.1 150/65 ; 0 0];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Non-Optimized Vs Optimized Microstimulation'); xlabel('Stimulation Strategy'); ylabel('Ratio Non-Motion To Motion'); legend('Optimized','Non-Optimized');
-xlim([0.5 1.5]);
-
-y= [150/65 65/45 ; 0 0];
-figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Microstimulation Vs Microstimulation + Optogenetics'); xlabel('Stimulation Strategy'); ylabel('Ratio Non-Motion To Motion'); legend('MS Only','MS + Opto');
-xlim([0.5 1.5]);
-
-
+% % Plotting Ratio
+% % Equation = (# of non-motion tuned) / (# of motion tuned)
+% 
+% y= [90 279 ; 65 150];
+% figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Non-Optimized Vs Optimized Microstimulation'); xlabel('Non-Optimized Optimized'); ylabel('Number of Activated Neurons'); legend('Motion','Non-Motion');
+% xlim([0.5 2.5]);
+% 
+% y= [3.1 150/65 ; 0 0];
+% figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Non-Optimized Vs Optimized Microstimulation'); xlabel('Stimulation Strategy'); ylabel('Ratio Non-Motion To Motion'); legend('Optimized','Non-Optimized');
+% xlim([0.5 1.5]);
+% 
+% y= [150/65 65/45 ; 0 0];
+% figure; set(gcf,'Position',[100 100 800 700]); bar(x,y); title('Microstimulation Vs Microstimulation + Optogenetics'); xlabel('Stimulation Strategy'); ylabel('Ratio Non-Motion To Motion'); legend('MS Only','MS + Opto');
+% xlim([0.5 1.5]);
+% 
+% 
 
 
 %% Neuron RB Varying with Inhibitory effect multiplier
 load('A1.mat'); load('A2.mat'); load('A3.mat'); load('A4.mat'); load('A5.mat'); load('A6.mat');
 
 for i = 1:NumMotifs
-    a = find(Neuron_Motif == i);
+    a = find(neuron.motif == i);
     b = a(1);
     a = a(2:5);
     Motif_Excitatory_RB_A1(i) = mean(Neuron_RBA1(a));

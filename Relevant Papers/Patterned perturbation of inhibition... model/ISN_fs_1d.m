@@ -5,41 +5,41 @@
 
 %% - network params
 
-dt = 1;
-t_end = 1e3;
-T = 0:dt:t_end;
-tau = 10;
+dt = 1; % 1ms
+t_end = 1e3; % 1000ms
+T = 0:dt:t_end; % Time vector
+tau = 10; % 
 
 t0 = 300; tf = 700;
-t_pert = logical((T>t0).*(T<tf));
+t_pert = logical((T>t0).*(T<tf)); % Creates array of 1's between time 300 and 700
 
 t_trans = 100;
-t_pert_rec = logical((T>(t0+t_trans)).*(T<tf));
-t_base_rec = logical((T>(t_trans)).*(T<t0));
+t_pert_rec = logical((T>(t0+t_trans)).*(T<tf));  % ARray of 1's between 400:700
+t_base_rec = logical((T>(t_trans)).*(T<t0)); % ARray of 1's between 100:300
 
-NE = 400;
-NI = 400;
-N = NE+NI;
+NE = 400; % Neuron excitatory
+NI = 400; % Neuron inhibitory
+N = NE+NI; % Total neurons
 
 J0 = .1/2;
-JEE = J0;
-JEI = J0;
-JIE = -1.5*J0;
+JEE = J0; % Patterned perturbations?
+JEI = J0; 
+JIE = -1.5*J0; %  Randomized patterns over neurons?
 JII = -1.5*J0;
 
-mEE = 1;
+mEE = 1; % Parameters of connectivity ???
 mEI = 1;
 mIE = 1;
 mII = 1;
 
-po_exc = linspace(0,pi,NE);
+po_exc = linspace(0,pi,NE); % Pi spaced apart from 0 to # Neurons? wtf?
 po_inh = linspace(0,pi,NI);
 
 simulate_network = 1;
 
 %% - weight matrix
 
-wEE = zeros(NE,NE);
+wEE = zeros(NE,NE); % Tuning curve of the neuron with respect to other neurons from 0:1
 wEI = zeros(NE,NI);
 for i = 1:NE
     wEE(i,:) = (1 + mEE * cos(2*(po_exc(i) - po_exc))) * JEE;
@@ -61,6 +61,8 @@ w(1:NE,:) = rectify(w(1:NE,:));
 w(NE+1:end,:) = -rectify(-w(NE+1:end,:));
 
 w(eye(N)==1) = 0;
+
+figure; plot(wEE(1,:)); % Visualize curve
 
 %% - activity dynamics
 

@@ -85,8 +85,10 @@ for i = 1:NumNeurons
 end
 
 Neuron_Pop_Spikes_Lambda = zeros(sx, sy);
+Neuron_Pop_Spikes_Diff = zeros(sx, sy);
 for i = 1:NumNeurons
     Neuron_Pop_Spikes_Lambda(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = Lambda_Spikes(i);
+    Neuron_Pop_Spikes_Diff(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = Lambda_Hat_Spikes(i)-Lambda_Spikes(i);
 end
 
 %% Poisson Spiking Model pt 2 - Lambda Hat (Stimulated)
@@ -159,43 +161,48 @@ plot(electrode.x,electrode.y,'.','color','black');
 %         line([x1,x2], [y1,y2],'Color', 'black');
 % end
 
-%%
+%% Motif Mapping
+
 grad=colorGradient([0 0 1],[1 1 0],128); map = [1 1 1; grad];
 
 % Stimulated motifs / neuron pop maps:
 Stimulated_Neurons = find(Lambda_Hat > 50 & Lambda_Hat < 100);
 Stimulated_Motifs = neuron.motif(Stimulated_Neurons);
+sm = 5;
+maxfr = max(Lambda(find(neuron.motif == sm)));
+maxfr_hat = max(Lambda_Hat(find(neuron.motif == sm)));
+rangex = [motif.center.x(Stimulated_Motifs(sm))-60 motif.center.x(Stimulated_Motifs(sm))+90]; 
+rangey = [motif.center.y(Stimulated_Motifs(sm))-100 motif.center.y(Stimulated_Motifs(sm))+50];
 
 figure; set(gcf,'Position',[100 100 800 700]); 
 imagesc(Neuron_Pop_Spikes); 
-title('Stimulated Motif'); xlabel('X Position (mm)'); ylabel('Y Position (mm)'); colorbar; caxis([1 max(Lambda_Hat(Stimulated_Neurons))]); colormap(map);
-xlim([motif.center.x(Stimulated_Motifs(1))-50 motif.center.x(Stimulated_Motifs(1))+50]); ylim([motif.center.y(Stimulated_Motifs(1))-50 motif.center.y(Stimulated_Motifs(1))+50]);
+title('Stimulated Motif FR'); xlabel('X Position (mm)'); ylabel('Y Position (mm)'); colorbar; caxis([1 maxfr_hat]); colormap(map);
+xlim(rangex); ylim(rangey);
 hold on
 plot(x4,y4,'.','color','Black');
 
-
-%%
 figure; set(gcf,'Position',[100 100 800 700]); imagesc(Neuron_Pop_Spikes); title('Neuron Response Stimulated'); xlabel('X Position (mm)'); ylabel('Y Position (mm)'); colorbar; caxis([1 100]);
 colormap(map);
 
 % Non-Stimulated motifs / neuron pop maps:
-figure; set(gcf,'Position',[100 100 800 700]); imagesc(Neuron_Pop_Spikes_Lambda(rangey,rangex)); title('Non-Stimulated Motif'); xlabel('X Position (mm)'); ylabel('Y Position (mm)'); colorbar; caxis([1 max(Lambda_Hat(Stimulated_Neurons))]);
+figure; set(gcf,'Position',[100 100 800 700]); 
+imagesc(Neuron_Pop_Spikes_Lambda); 
+title('Non-Stimulated Motif FR'); xlabel('X Position (mm)'); ylabel('Y Position (mm)'); colorbar; colormap(map);
+xlim(rangex); ylim(rangey);
 hold on
-a = find(population.empty(rangey,rangex) > 0);
-[y1,x1] = ind2sub([length(rangex) length(rangey)],a);
-plot(x1,y1,'.','color','Black');
-colormap(map);
+plot(x4,y4,'.','color','Black');
 
 figure; set(gcf,'Position',[100 100 800 700]); imagesc(Neuron_Pop_Spikes_Lambda); title('Neuron Response Non-Stimulated'); xlabel('X Position (mm)'); ylabel('Y Position (mm)'); colorbar;
 colormap(map);
 
 % motifs difference map:
-figure; set(gcf,'Position',[100 100 800 700]); imagesc(Neuron_Pop_Spikes(rangey,rangex) - Neuron_Pop_Spikes_Lambda(rangey,rangex)); title('Motif Difference Map'); xlabel('X Position (mm)'); ylabel('Y Position (mm)'); colorbar; caxis([0 max(Lambda_Hat(Stimulated_Neurons)-max(Lambda(Stimulated_Neurons)))]);
+
+figure; set(gcf,'Position',[100 100 800 700]); 
+imagesc(Neuron_Pop_Spikes_Diff); 
+title('Motif FR Change'); xlabel('X Position (mm)'); ylabel('Y Position (mm)'); colorbar; colormap(map); caxis([1 10]);
+xlim(rangex); ylim(rangey);
 hold on
-a = find(population.empty(rangey,rangex) > 0);
-[y1,x1] = ind2sub([length(rangex) length(rangey)],a);
-plot(x1,y1,'.','color','Black')
-colormap(map);
+plot(x4,y4,'.','color','Black');
 
 figure; set(gcf,'Position',[100 100 800 700]); imagesc(Neuron_Pop_Spikes-Neuron_Pop_Spikes_Lambda); title('Neuron Response Difference'); xlabel('X Position (mm)'); ylabel('Y Position (mm)'); colorbar; caxis([1 100]);
 colormap(map);

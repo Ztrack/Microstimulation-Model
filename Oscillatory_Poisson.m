@@ -10,11 +10,11 @@ Lambda = 40;
 dt = 1e-3;
 t = 0:dt:1-dt;
 x = sin(2*pi*Lambda*t);
-figure; plot(x); title('40 Hz sin wave');
+figure; set(gcf,'Position',[100 100 800 700]); plot(x); title('40 Hz sin wave');
 Y = fft(x,length(t));
 Pyy = Y.*conj(Y)/length(t);
 f = 1000/length(t)*(0:length(t)/2);
-figure; plot(f,Pyy(1:(length(t)/2)+1))
+figure; set(gcf,'Position',[100 100 800 700]); plot(f,Pyy(1:(length(t)/2)+1))
 title('PSD of a 40 Hz Sin Wave');
 xlabel('Frequency (Hz)'); ylabel('Power'); xlim([0 100]);
 
@@ -31,7 +31,7 @@ for i = 1:1000
 end
 Pyy = mean(Pyy1);
 f = 1000/length(t)*(0:length(t)/2);
-figure; plot(f,Pyy(1:(length(t)/2)+1));
+figure; set(gcf,'Position',[100 100 800 700]); plot(f,Pyy(1:(length(t)/2)+1));
 title('PSD of a Non-oscillatory Neuron');
 xlabel('Frequency (Hz)'); ylabel('Power'); xlim([0 10]);
 
@@ -49,7 +49,7 @@ for i = 1:1000
 end
 Pyy = mean(Pyy1);
 f = 1000/length(t)*(0:length(t)/2);
-figure; plot(f,Pyy(1:(length(t)/2)+1));
+figure; set(gcf,'Position',[100 100 800 700]); plot(f,Pyy(1:(length(t)/2)+1));
 title('PSD of an oscillatory Neuron');
 xlabel('Frequency (Hz)'); ylabel('Power'); xlim([0 100]);
 
@@ -66,7 +66,7 @@ Lambda_Hat(neuron.excitatory) = randi([20 60],size(neuron.excitatory));
 Lambda_Hat(neuron.inhibitory) = randi([40 80],size(neuron.inhibitory));
 
 for i = 1:NumNeurons
-    if Neuron_Oscillatory_Type(i) == 3
+    if neuron.oscillatorytype(i) == 3
         for n = 1 : NumTrials
             x = Oscillatory_PoissonGen_Spike_Train(Lambda(i), dt, 1);
             Y = fft(x,length(t));
@@ -82,12 +82,12 @@ for i = 1:NumNeurons
     Pyy2(i,:)= mean(Pyy1);
 end
 Pyy_mean_Lambda = mean(Pyy2);
-Pyy_mean_Lambda2 = mean(Pyy2(Neuron_Inhibitory_Oscillatory,:));
-Pyy_mean_Lambda3 = mean(Pyy2(Neuron_Inhibitory_Non_Oscillatory,:));
+Pyy_mean_Lambda2 = mean(Pyy2(neuron.oscillatory,:));
+Pyy_mean_Lambda3 = mean(Pyy2(neuron.nonoscillatory,:));
 Pyy_mean_Lambda4 = mean(Pyy2(neuron.excitatory,:));
 
 for i = 1:NumNeurons
-    if Neuron_Oscillatory_Type(i) == 3
+    if neuron.oscillatorytype(i) == 3
         for n = 1 : NumTrials
             x = Oscillatory_PoissonGen_Spike_Train(Lambda_Hat(i), dt, 1);
             Y = fft(x,length(t));
@@ -103,29 +103,29 @@ for i = 1:NumNeurons
     Pyy3(i,:)= mean(Pyy1);
 end
 Pyy_mean_Lambda_Hat = mean(Pyy3);
-Pyy_mean_Lambda_Hat2 = mean(Pyy3(Neuron_Inhibitory_Oscillatory,:));
-Pyy_mean_Lambda_Hat3 = mean(Pyy3(Neuron_Inhibitory_Non_Oscillatory,:));
+Pyy_mean_Lambda_Hat2 = mean(Pyy3(neuron.oscillatory,:));
+Pyy_mean_Lambda_Hat3 = mean(Pyy3(neuron.nonoscillatory,:));
 Pyy_mean_Lambda_Hat4 = mean(Pyy3(neuron.excitatory,:));
 
-figure; 
+figure; set(gcf,'Position',[100 100 800 700]); 
 plot(f,Pyy_mean_Lambda(1:(length(t)/2)+1)); hold on;
 plot(f,Pyy_mean_Lambda_Hat(1:(length(t)/2)+1),'--'); hold on;
 title('PSD of Neural Population');
 xlabel('Frequency (Hz)'); ylabel('Power'); xlim([20 100]); legend('Pre Stimulation','Post Stimulation');
 
-figure; 
+figure; set(gcf,'Position',[100 100 800 700]); 
 plot(f,Pyy_mean_Lambda2(1:(length(t)/2)+1)); hold on;
 plot(f,Pyy_mean_Lambda_Hat2(1:(length(t)/2)+1),'--'); hold on;
 title('PSD of OSC Inhibitory Neurons');
 xlabel('Frequency (Hz)'); ylabel('Power'); xlim([20 100]); legend('Pre Stimulation','Post Stimulation');
 
-figure; 
+figure; set(gcf,'Position',[100 100 800 700]); 
 plot(f,Pyy_mean_Lambda3(1:(length(t)/2)+1)); hold on;
 plot(f,Pyy_mean_Lambda_Hat3(1:(length(t)/2)+1),'--'); hold on;
 title('PSD of Non-OSC Inhibitory Neurons');
 xlabel('Frequency (Hz)'); ylabel('Power'); xlim([20 100]); legend('Pre Stimulation','Post Stimulation');
 
-figure; 
+figure; set(gcf,'Position',[100 100 800 700]); 
 plot(f,Pyy_mean_Lambda4(1:(length(t)/2)+1)); hold on;
 plot(f,Pyy_mean_Lambda_Hat4(1:(length(t)/2)+1),'--'); hold on;
 title('PSD of Excitatory Neurons');
@@ -167,8 +167,8 @@ for ii = 1:length(Lambda_Vector)
     m(ii) = max(Pyy); % gain which corresponds to the maximum of the frequency spectrum
 end
 
-figure; plot(Lambda_Vector,abs(m-m0)); title('Stimulus Modulation of Sinusoid Gain'); xlabel('Firing Rate (Hz)'); ylabel('Absolute Power Change');
-figure; plot(Lambda_Vector,abs(r-r0)); title('Stimulus Modulation of Sinusoid Amplitude'); xlabel('Firing Rate (Hz)'); ylabel('Absolute Power Change');
+figure; set(gcf,'Position',[100 100 800 700]); plot(Lambda_Vector,abs(m-m0)); title('Stimulus Modulation of Sinusoid Gain'); xlabel('Firing Rate (Hz)'); ylabel('Absolute Power Change');
+figure; set(gcf,'Position',[100 100 800 700]); plot(Lambda_Vector,abs(r-r0)); title('Stimulus Modulation of Sinusoid Amplitude'); xlabel('Firing Rate (Hz)'); ylabel('Absolute Power Change');
 
 
 %% Functions

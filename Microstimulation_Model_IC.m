@@ -65,6 +65,12 @@ neuron.oscillatorytype = zeros(1,NumNeurons); neuron.oscillatorytype(neuron.osci
 
 %% Motif Location Selector
 
+% The x,y space is divided into x number of pads. WE must determine where
+% these pads lie. For the purposes of keeping things within bounds, a
+% modstart and modend value is determined. Motif locations are then
+% selected depending on pad designation and distance to other motifs.
+
+% Pad location Definitions
 ii = 1; iii = 1; MotifEdgeDistance = 200;
 for i = 1:NumPads
     
@@ -105,6 +111,7 @@ for i = 1:NumPads
     end
 end
 
+% Motif Location Designation
 ii = 1; ClosestMotif = 0; MotifLength = 50; MinimumMotifDistance = MotifLength*2;
 for i = 1:NumMotifs
     
@@ -119,11 +126,9 @@ for i = 1:NumMotifs
             x1 = randi([pad.modstart.x(ii) pad.modend.x(ii)],1,1); % Selects random X,Y Combination to test
             y1 = randi([pad.modstart.y(ii) pad.modend.y(ii)],1,1);
             ClosestMotif = min(sqrt((x1 - motif.center.x).^2 + (y1 - motif.center.y).^2)); % Determines ecleudian distance between test xy and all motifs
-            if ClosestMotif > MinimumMotifDistance % If ecleudian distance to every other motif is greater than minimum, these values work.
-                motif.center.x(i) = x1;
-                motif.center.y(i) = y1;
-            end
         end
+        motif.center.x(i) = x1; % Values are accepted, they are far enough away from all other motifs
+        motif.center.y(i) = y1;
     end
     
     ClosestMotif = 0; % Reset value for closest motif distance
@@ -159,12 +164,15 @@ for i = 1:NumNeurons
         x2 = randi([x1-MotifLength x1+MotifLength],1,1); % Selects random X,Y Combination to test
         ClosestNeuron = min(sqrt((x2 - neuron.x).^2 + (y2 - neuron.y).^2)); % Determines ecleudian distance between test xy and all motifs
     end
-    neuron.x(i) = x2;
+    neuron.x(i) = x2; % Neuron values are accepted, they are far enough away from all other neurons
     neuron.y(i) = y2;
     ClosestNeuron = 0; % Reset value for closest motif distance
 end
 
-% Create neuron axon indices for inhibitory neurons
+% Create neuron axon indices for inhibitory neurons. First we draw a 'hub'
+% line seperating inhibitory and excitatory neurons. This is done for
+% visuals mainly. Then we connect the neurons to the hub lines. This 'tree'
+% axon network counts as the inhibitory neuron's axon.
 
 for i = 1:NumMotifs
     axonmap = zeros(sx,sy); % reset axonmap
@@ -194,6 +202,7 @@ for i = 1:NumMotifs
         axonmap(lindex) = 1;
     end
     
+    % Store axon indices
     for ii = 1:length(x)
         if neuron.type(x(ii)) == 1
             neuron.indices(x(ii)).axon = find(axonmap == 1);
@@ -231,8 +240,10 @@ for i = 1:NumMotifs
     end
 end
 
+% Stores which pad a neuron belongs to
+
 for i = 1:NumNeurons
-   neuron.pad(i) = motif.pad(neuron.motif(i)); % Stores which pad a neuron belongs to
+   neuron.pad(i) = motif.pad(neuron.motif(i));
 end
 
 % Neuron Soma Indices
@@ -246,6 +257,7 @@ end
 clear('singlepop');
 %% Stimulation Locations Matrix
 
+% 10x10 electrode array. First we must determine their locations
 electrode.x = []; electrode.y = [];
 for i = 1:10 % Number of electrodes = 100, 10x10 over 4mm in center of map. Does not create an electrode at percent center!
     for j = 1:10
@@ -255,6 +267,8 @@ for i = 1:10 % Number of electrodes = 100, 10x10 over 4mm in center of map. Does
 end
 electrode.x = electrode.x(:); electrode.y = electrode.y(:);
 
+% Now we must determine how far each square is to each electrode for later
+% intergrating.
 Stim_Distance_Map = zeros(length(electrode.x),sx,sy);
 for i = 1:length(electrode.x)
     Stim_Loc =  zeros(sx, sy); % Location of stimulus
@@ -266,12 +280,12 @@ end
 
 %% Neuron And Axon Area Summation
 
-neuron.io.soma = zeros(NumNeurons,length(electrode.x));
+neuron.io.soma = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Somas
 neuron.io.axon = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
 
 for i = 1:NumNeurons
     
-    if neuron.type(i) == 1
+    if neuron.type(i) == 1 % If this is an inhibitory neuron
         neuron.direction(i) = motif.orientation(neuron.motif(i)); % Sets stored value for inhibitory axon direction
         for j = 1:length(electrode.x)
             neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % sums all inhibitory axon current feedback
@@ -299,6 +313,8 @@ for i = 1:NumNeurons
         cIndex = round(linspace(xc(1), xc(2), Points)); % Column indices
         lindex = sub2ind([sx sy], rIndex,cIndex); % Linear indices
         neuron.indices(i).axon = lindex(:);
+        
+        % Summating io for every neuron
         for j = 1:length(electrode.x)
             neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % Stores information on the axon morphology to calculate current backpropogation
             neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^2)); % Summation 1/r^2 area component of soma
@@ -354,7 +370,7 @@ end
 population.all.map = population.excitatory.map + population.inhibitory.map + population.axon.map;
 population.all.map(population.all.map > 1) = 1; % Filters down any values to 1
 
-% Storing Indices
+% Storing Indices for easy plotting
 population.inhibitory.indices = find(population.inhibitory.map > 0);
 population.excitatory.indices = find(population.excitatory.map > 0);
 population.axon.indices = find(population.axon.map > 0);
@@ -365,6 +381,11 @@ population.motion.indices = find(population.motion.map > 0);
 %figure; imagesc(population.all.map); colorbar;
 
 %% Directional Current Multiplier
+
+% The direction of the neuron axon hillic is important. When the axon
+% hillic is in the direction of the current stimulus, it is easier for it
+% to become excited.
+
 Directional_Current_Mult = zeros(NumNeurons,length(electrode.x));
 Axon_Direction_Theta = zeros(NumNeurons,1);
 for i = 1:NumNeurons
@@ -378,6 +399,8 @@ for i = 1:NumNeurons
         Axon_Direction_Theta(i) = -90;
     end
 end
+
+% Calculate angle from axon hillic to each electrode
 
 for i = 1:NumNeurons
     x2 = neuron.x(i);

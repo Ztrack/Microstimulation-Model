@@ -8,7 +8,7 @@ load('InitialConditionsFull.mat');
 
 % Problem Definiton
 
-problem.CostFunction = @(ec) MotionRatio_MS(ec,NumNeurons,I0_Axon_Neurons,I0_Soma_Neurons,Directional_Current_Mult,neuron);  % Cost Function  % Cost Function
+problem.CostFunction = @(ec) MotionRatio_MS(ec,NumNeurons,neuron.io.axon,neuron.io.soma,Directional_Current_Mult,neuron);  % Cost Function  % Cost Function
 problem.nVar = 100;       % Number of Unknown (Decision) Variables
 problem.VarMin =  0;  % Lower Bound of Decision Variables
 problem.VarMax =  100;   % Upper Bound of Decision Variables
@@ -32,7 +32,7 @@ BestCosts_MS = out.BestCosts;
 
 % Results
 
-figure;
+figure; set(gcf,'Position',[100 100 800 700]);
 % plot(BestCosts, 'LineWidth', 2);
 semilogy(BestCosts_MS, 'LineWidth', 2);
 xlabel('Iteration');
@@ -43,15 +43,15 @@ grid on;
 %% Optogenetics Optimization
 
 % Problem Variables
-[~,Neuron_Activated] = MotionRatio_MS(BestSol_MS.Position,NumNeurons,I0_Axon_Neurons,I0_Soma_Neurons,Directional_Current_Mult,neuron);
+[~,Neuron_Activated] = MotionRatio_MS(BestSol_MS.Position,NumNeurons,neuron.io.axon,neuron.io.soma,Directional_Current_Mult,neuron);
 
 Neuron_No_Activated = find(Neuron_Activated == 1); % All neuron # activated from microstimulation
 Neuron_No_Activated_Motion = intersect(Neuron_No_Activated,neuron.motion.number); % All neuron # of motion tuned neurons activated
 Neuron_No_Activated_NonMotion = intersect(Neuron_No_Activated,neuron.nonMotion.number); % All neuron % of non-motion tuned neurons activated
 Activated_Motion = length(Neuron_No_Activated_Motion); % Stores # of activated motion-tuned
 Activated_NonMotion = length(Neuron_No_Activated_NonMotion); % Stores # of activated nonmotion-tuned
-I0_Motion = I0_Soma_Neurons(Neuron_No_Activated_Motion,:); % Stores d information for Motion tuned. sum(I0*e) < 1
-I0_NonMotion = I0_Soma_Neurons(Neuron_No_Activated_NonMotion,:); % Stores d information for non-motion tuned. sum(I0*e) > 1
+I0_Motion = neuron.io.soma(Neuron_No_Activated_Motion,:); % Stores d information for Motion tuned. sum(I0*e) < 1
+I0_NonMotion = neuron.io.soma(Neuron_No_Activated_NonMotion,:); % Stores d information for non-motion tuned. sum(I0*e) > 1
 Opto_Thresh = 1; % Threshold that needs to be reached to inactivate cell
 % eo = electrode opto stimulus
 
@@ -82,7 +82,7 @@ BestCosts_Opto = out.BestCosts;
 
 % Results
 
-figure;
+figure; set(gcf,'Position',[100 100 800 700]);
 % plot(BestCosts, 'LineWidth', 2);
 semilogy(BestCosts_Opto, 'LineWidth', 2);
 xlabel('Iteration');
@@ -101,16 +101,16 @@ for i = 1:length(electrode.x)
     Ed = (bwdist(Stim_Loc)); % Calculates the Euclidean distance from stim points. Sets origin (stim point) to 0
     Ed(Ed == 0) = 1;
     R2 = 1./(Ed);
-    R2(R2 < 0.01) = 0;
+    % R2(R2 < 0.01) = 0; % Filtering
     Stim_Current = Stim_Current + R2.*BestSol_MS.Position(i); % Distance of every square to the nearest stim location
     Stim_Opto = Stim_Opto + R2.*BestSol_Opto.Position(i);
 end
 grad=colorGradient([1/4 1/2 1],[0 0 1],128); map = [1 1 1; grad];
-figure; imagesc(Stim_Current); colorbar; title('Current Intensity'); colormap(map);
-figure; imagesc(Stim_Opto); colorbar; title('Light Intensity'); colormap(map);
+figure; set(gcf,'Position',[100 100 800 700]); imagesc(Stim_Current); colorbar; title('Current Intensity'); colormap(map);
+figure; set(gcf,'Position',[100 100 800 700]); imagesc(Stim_Opto); colorbar; title('Light Intensity'); colormap(map);
 
 %% Neuron Pop Plots
-[Lambda,Lambda_Hat] = Lambda_Hat_Gen(BestSol_MS,BestSol_Opto,NumNeurons,I0_Axon_Neurons,I0_Soma_Neurons,Directional_Current_Mult,neuron);
+[Lambda,Lambda_Hat] = Lambda_Hat_Gen(BestSol_MS,BestSol_Opto,NumNeurons,Directional_Current_Mult,neuron);
 Neuron_Pop = zeros(sx, sy); Neuron_Pop_LH = Neuron_Pop; Neuron_Pop_L = Neuron_Pop;
 for i = 1:NumNeurons
     Neuron_Pop(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii,neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
@@ -120,35 +120,23 @@ end
 Neuron_Pop_D = Neuron_Pop_LH - Neuron_Pop_L;
 Neuron_Pop_D(Neuron_Pop_D < 0) = 0; % Neuron pop delta firing rate
 
-figure; imagesc(Neuron_Pop_D); colorbar; title('Neural Population Firing Rate Change'); colormap(map);
+figure; set(gcf,'Position',[100 100 800 700]); imagesc(Neuron_Pop_D); colorbar; title('Neural Population Firing Rate Change'); colormap(map);
 
 %%
-Neuron_Inhibitory_Population_Matrix = zeros(sx,sy);
-Neuron_Excitatory_Population_Matrix = zeros(sx,sy);
-Axon_Population_Matrix = Axon_Excitatory_Matrix + Axon_Inhibitory_Matrix;
-Axon_Population_Matrix(Axon_Population_Matrix >1) = 1;
+Stim_Current1 = Stim_Current;
+Stim_Current1(Stim_Current1 > 1) = 1;
+Stim_Opto1 = Stim_Opto;
+Stim_Opto1(Stim_Opto1 > 1) = 1;
 
-for i = 1:NumNeurons
-    if neuron.type(i) == 1
-        Neuron_Inhibitory_Population_Matrix(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 1;
-    else
-        if length(intersect(i,neuron.motion.number)) == 1 % If true, this neuron is a motion neuron
-            Neuron_Excitatory_Population_Matrix(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 3;
-        else % Not a motion neuron
-            Neuron_Excitatory_Population_Matrix(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = 2;
-        end
-    end
-end
-a = find(Neuron_Inhibitory_Population_Matrix == 1);
-b = find(Neuron_Excitatory_Population_Matrix == 2);
-c = find(Neuron_Excitatory_Population_Matrix == 3);
-d = find(Axon_Population_Matrix > 0);
+[y1,x1] = ind2sub([sx sy],population.inhibitory.indices); % Inhibitory
+[y2,x2] = ind2sub([sx sy],population.excitatory.indices); % Non-Motion Excitatory
+[y3,x3] = ind2sub([sx sy],population.motion.indices); % Motion
+[y4,x4] = ind2sub([sx sy],population.axon.indices); % Axons
 
-[y1,x1] = ind2sub([sx sy],a); [y2,x2] = ind2sub([sx sy],b); [y3,x3] = ind2sub([sx sy],c); [y4,x4] = ind2sub([sx sy],d);
-Axon_Population_Matrix(Axon_Population_Matrix > 0) = 1;
+grad=colorGradient([1 1 1],[0 0 1],128); map = [1 1 1; grad];
 
-figure; % Stim Current with neuron figure
-imagesc(Stim_Current); colormap(map);
+figure; set(gcf,'Position',[100 100 800 700]); % Stim Current with neuron figure
+imagesc(Stim_Current1); colormap(map);
 hold on
 plot(x4,y4,'.','color','Black')
 hold on
@@ -157,8 +145,8 @@ plot(x2,y2,'.','color','Blue'); hold on;
 plot(x3,y3,'.','color','Green'); hold on;
 title('Current Stimulus Over Neural Population'); %legend('Inhibitory','Excitatory');
 
-figure; % Stim Opto with neuron figure
-imagesc(Stim_Opto); colormap(map);
+figure; set(gcf,'Position',[100 100 800 700]); % Stim Opto with neuron figure
+imagesc(Stim_Opto1); colormap(map);
 hold on
 plot(x4,y4,'.','color','Black')
 hold on
@@ -169,7 +157,7 @@ title('Light Stimulus Over Neural Population'); %legend('Inhibitory','Excitatory
 
 %% Functions
 
-function [z,Neuron_Activated] = MotionRatio_MS(ec,NumNeurons,I0_Axon_Neurons,I0_Soma_Neurons,Directional_Current_Mult,neuron)
+function [z,Neuron_Activated] = MotionRatio_MS(ec,NumNeurons,Directional_Current_Mult,neuron)
 % z = solution to be minimzied
 % ec = all electrode variables
 ElectrodeNo = 1:length(ec);
@@ -179,8 +167,8 @@ lambda_needed_RS = 29.0; % Value determined experimentally
 lambda_needed_FS= 53.0; % % Value determined experimentally
 
 for i = 1:length(ec) % Summation of current for every neuron component by every electrode & its corresponding current
-    Ie_Axon_Neurons = Ie_Axon_Neurons + I0_Axon_Neurons(:,ElectrodeNo(i)).*ec(i);
-    Ie_Soma_Neurons = Ie_Soma_Neurons + I0_Soma_Neurons(:,ElectrodeNo(i)).*ec(i).*Directional_Current_Mult(:,ElectrodeNo);
+    Ie_Axon_Neurons = Ie_Axon_Neurons + neuron.io.axon(:,ElectrodeNo(i)).*ec(i);
+    Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*ec(i).*Directional_Current_Mult(:,ElectrodeNo);
 end
 
 Ie_Soma_Axon_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons
@@ -250,7 +238,7 @@ end
 
 end
 
-function [Lambda,Lambda_Hat] = Lambda_Hat_Gen(BestSol_MS,BestSol_Opto,NumNeurons,I0_Axon_Neurons,I0_Soma_Neurons,Directional_Current_Mult,neuron)
+function [Lambda,Lambda_Hat] = Lambda_Hat_Gen(BestSol_MS,BestSol_Opto,NumNeurons,Directional_Current_Mult,neuron)
 
 % ec = all electrode current variables
 % eo = all electrode light variables
@@ -264,8 +252,8 @@ lambda_needed_RS = 29.0; % Value determined experimentally
 lambda_needed_FS= 53.0; % % Value determined experimentally
 
 for i = 1:length(ec) % Summation of current for every neuron component by every electrode & its corresponding current
-    Ie_Axon_Neurons = Ie_Axon_Neurons + I0_Axon_Neurons(:,ElectrodeNo(i)).*ec(i);
-    Ie_Soma_Neurons = Ie_Soma_Neurons + I0_Soma_Neurons(:,ElectrodeNo(i)).*ec(i).*Directional_Current_Mult(:,ElectrodeNo);
+    Ie_Axon_Neurons = Ie_Axon_Neurons + neuron.io.axon(:,ElectrodeNo(i)).*ec(i);
+    Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*ec(i).*Directional_Current_Mult(:,ElectrodeNo);
 end
 
 Ie_Soma_Axon_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons
@@ -304,7 +292,7 @@ Opto_Thresh = 1;
 Opto_Stim = zeros(NumNeurons,1); % Initialize opto stimulus
 
 for i = 1:length(eo) % Summation of stimulus for every neuron by every electrode distance & its corresponding stimulus
-    Opto_Stim = Opto_Stim + I0_Soma_Neurons(:,i).*eo(i);
+    Opto_Stim = Opto_Stim + neuron.io.soma(:,i).*eo(i);
 end
 
 for i = 1:NumNeurons
