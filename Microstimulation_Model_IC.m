@@ -394,4 +394,4 @@ end
 %% Cleaning output
 
 clear ('Stim_Distance_Map','rp','rp_x','rp_y','Stim_Distance','Stim_Loc','PadSize','Neuron_points_Matrix','Ed');
-save InitialConditionsFull.mat;
+save InitialConditionsFullB.mat;
