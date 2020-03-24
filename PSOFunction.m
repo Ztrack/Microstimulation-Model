@@ -24,11 +24,12 @@ function out = PSOFunction(problem, params)
     VarMin = problem.VarMin;	% Lower Bound of Decision Variables
     VarMax = problem.VarMax;    % Upper Bound of Decision Variables
 
-
     %% Parameters of PSO
 
     MaxIt = params.MaxIt;   % Maximum Number of Iterations
-
+    AdaptiveItMax = params.AdaptiveItMax; % Max number of adaptive iterations
+    AdaptiveItThreshold = params.AdaptiveItThreshold; % if the absolute value of it - (it-1) is less than this, we say there is little enough change
+    
     nPop = params.nPop;     % Population Size (Swarm Size)
 
     w = params.w;           % Intertia Coefficient
@@ -85,7 +86,8 @@ function out = PSOFunction(problem, params)
 
 
     %% Main Loop of PSO
-
+    
+    AdaptiveIt = 0; % If the last ~5 or however many solutions have been the same, we reached a local minima
     for it=1:MaxIt
 
         for i=1:nPop
@@ -134,11 +136,22 @@ function out = PSOFunction(problem, params)
 
         % Damping Inertia Coefficient
         w = w * wdamp;
-
+        
+        if it > 1
+        if abs(BestCosts(it)-BestCosts(it-1)) < AdaptiveItThreshold
+            AdaptiveIt = AdaptiveIt+1;
+        else
+            AdaptiveIt = 0; % Reset adaptive it
+        end
+        end
+        
+        if AdaptiveIt == AdaptiveItMax
+            break
+        end
     end
     
     out.pop = particle;
     out.BestSol = GlobalBest;
     out.BestCosts = BestCosts;
-    
+    out.NumIt = it;
 end

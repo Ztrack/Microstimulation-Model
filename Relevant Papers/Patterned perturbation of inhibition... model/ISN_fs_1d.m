@@ -69,13 +69,13 @@ figure; plot(wEE(1,:)); % Visualize curve
 if simulate_network
 
     % - perturbing the specific mode
-    I_specPert = 1 + .25*rand(N,length(T))/5;
-    dI_specPert = -.1*(sin(2*po_inh)')-.1;
-    I_specPert(NE+1:end,t_pert) = I_specPert(NE+1:end,t_pert) + dI_specPert;
+    I_specPert = 1 + .25*rand(N,length(T))/5; % N by time long % change in the input to inhibitory (inh.) neurons during pert.
+    dI_specPert = -.1*(sin(2*po_inh)')-.1; 
+    I_specPert(NE+1:end,t_pert) = I_specPert(NE+1:end,t_pert) + dI_specPert; % input to pert. inh. neurons
 
-    r_specPert = simulate_dynamics(I_specPert, N, T, w, dt, tau);
+    r_specPert = simulate_dynamics(I_specPert, N, T, w, dt, tau); % output activity of pert. inh. neurons
 
-    % - perturbing the uniform mode
+    % - perturbing the uniform mode0
     I_genPert = 1 + .25*rand(N,length(T))/5;
     dI_genPert = dI_specPert(randperm(NI)); % randomizing the specific pert.
     I_genPert(NE+1:end,t_pert) = I_genPert(NE+1:end,t_pert) + dI_genPert;

@@ -3,6 +3,9 @@ load('InitialConditionsFull.mat');
 
 %% Microstimulation + Optogenetics Optomization
 
+% Problem Variables
+
+
 % Problem Definiton
 
 problem.CostFunction = @(x) MotionRatioCombined(x,NumNeurons,neuron,Directional_Current_Mult); % Cost
@@ -12,7 +15,7 @@ problem.VarMax =  50;   % Upper Bound of Decision Variables
 
 % Parameters of PSO
 params.AdaptiveItMax = 3; % Max number of adaptive iterations
-params.AdaptiveItThreshold = .05; % if the absolute value of it - (it-1) is less than this, we say there is little enough change to end the search
+params.AdaptiveItThreshold = .1; % if the absolute value of it - (it-1) is less than this, we say there is little enough change
 params.MaxIt = 50;        % Maximum Number of Iterations
 params.nPop = 100;           % Population Size (Swarm Size)
 params.w = 1;               % Intertia Coefficient
@@ -31,15 +34,15 @@ params.ShowIterInfo = true; % Flag for Showing Iteration Informatin
 
 % Calling PSO Iterative
 
-for i = 1000:1000:1000000
+for i = 1:1000
     params.nPop = i;
     out = PSOFunction(problem, params);
-    Iterative.Costs(i) = out.BestSol.Cost;
+    Iterative.Costs = out.BestSol.Cost;
     BestIt = out.NumIt;
     
     if Iterative.Costs(i) == min(Iterative.Costs)
         Iterative.BestCost = Iterative.Costs(i);
-        Iterative.BestSolPos = out.BestSol.Position;
+        Iterative.BestSol = out.BestCosts;
     end
 end
 
