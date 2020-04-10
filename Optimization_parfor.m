@@ -72,8 +72,8 @@ end
 function z = MotionRatioCombined(x,NumNeurons,neuron,Directional_Current_Mult) % Cost
 % z = solution to be minimzied
 % ec = all electrode variables
-ec = x(1:100);
-eo = x(101:200);
+ec = x(1:100); % Current Values
+eo = x(101:200); % Ir values
 
 % Electrical Field Summation
 
