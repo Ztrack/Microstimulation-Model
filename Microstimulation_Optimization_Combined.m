@@ -91,7 +91,8 @@ Ie_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly 
 Ir_Neurons = Ir_Soma_Neurons; % Summation of current directly from stimulus. AU irridance
 
 % Calculate Lambda Hat
-
+FS_Lambda = 40; % Fast Spiking Neurons, Inhibitory
+RS_Lambda = 20; % Regular Spiking Neurons, Excitory
 Inhibitory_Factor = 0.01;
 
 Lambda_Hat = zeros(NumNeurons,1); % Probability change due to current injection
@@ -117,8 +118,6 @@ for i = 1:NumNeurons % Applying inhibitory factor to firing rates of RS Neurons
 end
 
 % neuron activation
-FS_Lambda = 40; % Fast Spiking Neurons, Inhibitory
-RS_Lambda = 20; % Regular Spiking Neurons, Excitory
 
 Neuron_Activated = zeros(NumNeurons,1);
 Neuron_Activated(neuron.excitatory) = Lambda_Hat(neuron.excitatory) > lambda_needed_RS;
