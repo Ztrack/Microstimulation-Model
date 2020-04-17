@@ -269,6 +269,7 @@ electrode.x = electrode.x(:); electrode.y = electrode.y(:);
 
 % Now we must determine how far each square is to each electrode for later
 % intergrating.
+load('lightspread.mat');
 Stim_Distance_Map = zeros(length(electrode.x),sx,sy);
 for i = 1:length(electrode.x)
     Stim_Loc =  zeros(sx, sy); % Location of stimulus
@@ -282,6 +283,7 @@ end
 
 neuron.io.soma = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Somas
 neuron.io.axon = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
+neuron.oo.soma = zeros(NumNeurons,length(electrode.x)); % Stores light stimulus area summation component of Somas
 
 for i = 1:NumNeurons
     
@@ -290,6 +292,7 @@ for i = 1:NumNeurons
         for j = 1:length(electrode.x)
             neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % sums all inhibitory axon current feedback
             neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
+            neuron.oo.soma(i,j) = lightspread.averaged.a.*Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^lightspread.averaged.b+lightspread.averaged.c; % Light Intensity Calculation
         end
         
     elseif neuron.type(i) == 2 % Creating a new axon matrix for Excitatory neurons. Must be made one at a time to calculate current effect on every neuron
@@ -318,6 +321,7 @@ for i = 1:NumNeurons
         for j = 1:length(electrode.x)
             neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % Stores information on the axon morphology to calculate current backpropogation
             neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^2)); % Summation 1/r^2 area component of soma
+            neuron.oo.soma(i,j) = lightspread.averaged.a.*Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^lightspread.averaged.b+lightspread.averaged.c; % Light Intensity Calculation
         end
         
     end

@@ -1,0 +1,121 @@
+clearvars; clc
+load('spreadata.mat')
+
+h = 1; % Angle step
+angles = 0:h:360-h; % Range of angles
+origin = find(spreadata==max(max(spreadata))); % Origin indices
+[y1,x1] = ind2sub([size(spreadata)],origin);  % Origin x,y
+dataradii = length(spreadata)-max(x1,y1);
+spreadata = spreadata(y1-dataradii:y1+dataradii,x1-dataradii:x1+dataradii); % Center data around origin
+k = 1;
+for i = 1:4
+
+    if i == 1
+        for ii = 1:length(spreadata)
+            indata(k) = sub2ind(size(spreadata),1,ii);
+            k = k+1;
+        end
+    elseif i == 2
+        for ii = 1:length(spreadata)
+            indata(k) = sub2ind(size(spreadata),length(spreadata),ii);
+            k = k+1;
+        end
+    elseif i == 3
+        for ii = 1:length(spreadata)
+            indata(k) = sub2ind(size(spreadata),ii,1);
+            k = k+1;
+        end
+    elseif i == 4
+        for ii = 1:length(spreadata)
+            indata(k) = sub2ind(size(spreadata),ii,length(spreadata));
+            k = k+1;
+        end
+    end
+    
+end
+
+for i = 1:length(indata)
+    Y = []; X = [];
+    [y2,x2] = ind2sub([size(spreadata)],indata(i));
+    theta = atan2d(y2-y1,x2-x1); % Angle from -180 to 180
+    normDeg(i) = mod(theta,360);
+end
+
+for i = 1:length(angles)
+    closestangle = abs(angles(i)-normDeg);
+    bestind(i) = find(closestangle == min(closestangle));
+    
+end
+
+for i = 1:length(bestind)
+    Y = []; X = [];
+    [y2,x2] = ind2sub([size(spreadata)],indata(bestind(i)));
+    xc = [x1 x2]; % X line
+    yc = [y1 y2]; % Y line
+    Points = max(abs(diff(xc)), abs(diff(yc)))+1; % Number of points in line
+    rIndex = round(linspace(yc(1), yc(2), Points)); % Row indices
+    cIndex = round(linspace(xc(1), xc(2), Points)); % Column indices
+    lindex = sub2ind([size(spreadata)], rIndex,cIndex); % Linear indices
+    
+    for ii = 1:length(lindex)
+        [y3,x3] = ind2sub([size(spreadata)],lindex(ii));
+        X(ii) = sqrt((x3-x1)^2+(y3-y1)^2); % Distance away from origin for each point
+    end
+    X(X == 0) = 1;
+    Y = spreadata(lindex); % Data value at this point/index
+    
+    f = fit(X',Y','Power2');
+    a(i) = f.a; % 
+    b(i) = f.b; % 
+    c(i) = f.c; % 
+    %d(i) = f.d; %
+
+end
+
+% Plotting
+figure;
+x = 1:500; % Distance
+y1 = []; y2 = [];
+for i = 1:length(angles)
+    y = a(i).*x.^b(i)+c(i);
+    y(y<0) = 0;
+    plot(y);
+    hold on;
+    y1(i,:) = y;
+end
+title('Light Spread Function Fitting');
+xlabel('Distance from origin um');
+ylabel('Magnitude of Power');
+
+figure;
+cangles = 45;
+for i = 1:360/45
+    % a*x^b+c format
+    y2 = mean(y1((i-1)*cangles+1:i*cangles,:));
+    plot(y2);
+    hold on;
+end
+title('Light Spread Function Fitting');
+xlabel('Distance from origin um');
+ylabel('Magnitude of Power');
+legend('1-45','46-90','91-135','136-180','181-225','226-270','271-315','316-360');
+
+y3 = mean(y1);
+lightspread.averaged = fit(x',y3','Power2');
+lightspread.equation = ['a*x^b+c'];
+lightspread.all.a = a;
+lightspread.all.b = b;
+lightspread.all.c = c;
+
+figure; 
+subplot(2,1,1); plot(x,y3);
+title('Averaged Light Spread Function');
+xlabel('Distance From Origin (um)');
+ylabel('Light Intensity (AU)');
+
+Stim_Loc = zeros(500,500);
+Stim_Loc(250,250) = 1;
+Ed = bwdist(Stim_Loc);
+subplot(2,1,2); 
+
+%save lightspread;
