@@ -292,7 +292,7 @@ for i = 1:NumNeurons
         for j = 1:length(electrode.x)
             neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % sums all inhibitory axon current feedback
             neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
-            neuron.oo.soma(i,j) = lightspread.averaged.a.*Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^lightspread.averaged.b+lightspread.averaged.c; % Light Intensity Calculation
+            neuron.oo.soma(i,j) = lightspread.averaged.a.*sum(sum(Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii))).^lightspread.averaged.b+lightspread.averaged.c; % Light Intensity Calculation
         end
         
     elseif neuron.type(i) == 2 % Creating a new axon matrix for Excitatory neurons. Must be made one at a time to calculate current effect on every neuron
@@ -321,11 +321,12 @@ for i = 1:NumNeurons
         for j = 1:length(electrode.x)
             neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,lindex).^2))); % Stores information on the axon morphology to calculate current backpropogation
             neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^2)); % Summation 1/r^2 area component of soma
-            neuron.oo.soma(i,j) = lightspread.averaged.a.*Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^lightspread.averaged.b+lightspread.averaged.c; % Light Intensity Calculation
+            neuron.oo.soma(i,j) = lightspread.averaged.a.*sum(sum(Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii))).^lightspread.averaged.b+lightspread.averaged.c; % Light Intensity Calculation
         end
         
     end
 end
+neuron.oo.soma(neuron.oo.soma < 0) = 0; % Fixing for negatives
 
 % Axon Generation for motion-tuned neural connections
 % I0_Motion_Neuron_Connections = zeros(length(Neuron_Connected),length(electrode.x));
@@ -429,4 +430,4 @@ end
 %% Cleaning output
 
 clear ('Stim_Distance_Map','rp','rp_x','rp_y','Stim_Distance','Stim_Loc','PadSize','Neuron_points_Matrix','Ed');
-save InitialConditionsFullB.mat;
+save InitialConditionsFull.mat;
