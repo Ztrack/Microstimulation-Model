@@ -22,16 +22,16 @@ end
 % Parameters
 Axonal_Mult = .01;
 bpct = 50; % Bottom Percentile for Rheobase calculation. 50 for 50%, 05 for 95% CI.
-%neuron.inhibitoryfactor = [0.01 0.03 0.1 0.125 0.15 0.2];
-neuron.inhibitoryfactor = [0.01];
+neuron.inhibitoryfactor = [0.01 0.03 0.1 0.125 0.15 0.2];
+%neuron.inhibitoryfactor = [0.01];
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 NumTrials = 100;
 
 %% Loop Start
-h = 500; % Step size
+h = 100; % Step size
 I0 = 0:h:100000;  % Current Steps
-numrepeats = 12; % Number of overall repeats
+numrepeats = 100; % Number of overall repeats
 ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
 ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
 
