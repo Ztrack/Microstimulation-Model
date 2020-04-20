@@ -147,8 +147,22 @@ end
 Stim_int = lightspread.averaged.a.*Ed.^lightspread.averaged.b+lightspread.averaged.c;
 subplot(2,1,2); imagesc(Stim_int); colorbar; xlabel('um'); ylabel('um'); title('1mW Light Intensity Distribution');
 
-
-
+% Electrical Stim Spread to compare
+figure;
+subplot(2,1,1);
+X = 1:50; % um
+Y = 100./X.^2;
+plot(X,Y);
+title('Current Intensity Distribution From Center');
+xlabel('Distance from origin um');
+ylabel('Magnitude of Current (AU)');
+subplot(2,1,2);
+Stim_Loc = zeros(50,50);
+Stim_Loc(25,25) = 1;
+Ed = bwdist(Stim_Loc); Ed(25,25) = 1;
+Stim_int = zeros(50,50);
+Stim_int = 1000./Ed;
+subplot(2,1,2); imagesc(Stim_int); colorbar; xlabel('um'); ylabel('um'); title('Current Intensity Distribution');
 
 
 

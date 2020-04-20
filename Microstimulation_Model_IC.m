@@ -29,6 +29,7 @@ PadSize = zeros(PadsYLength, PadsXLength);
 % Temporal Properties
 T = 1; % Duration of experiment in seconds
 dt = T/1000; % Time step length
+NumSteps = 1/dt;
 
 %% Neuron Definitions
 

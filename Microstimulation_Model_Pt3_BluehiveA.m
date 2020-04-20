@@ -4,8 +4,11 @@ Oscillatory_Behavior = 1; % is set =1, .33 of all inhibitory neurons will use Os
 Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
 Motion_Axon = 0; % if set =1, enabled, connections between relevant motion neurons is established
 Axonal_Mult = .01;
-
-Inhibitory_Factor = [0.01 0.03 0.1 0.125 0.15 0.2];
+bpct = 50; % Bottom Percentile for Rheobase calculation. 50 for 50%, 05 for 95% CI.
+neuron.inhibitoryfactor = [0.01 0.03 0.1 0.125 0.15 0.2];
+neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
+neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
+NumTrials = 1000;
 
 if Directional_Current_Modifier == 0
     Directional_Current_Mult(:,:) = 1;
@@ -23,9 +26,9 @@ ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
 ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
 
 
-for kk = 1:length(Inhibitory_Factor)
+for kk = 1:length(neuron.inhibitoryfactor)
     
-    Neuron_RB = NaN(numrepeats,NumNeurons); % Rhoebase for every neuron, stored as I0 which causes Lambda+1 spike
+    Neuron_RB = NaN(numrepeats,NumNeurons); % Rhoebase for every neuron, stored as I0 which causes neuron.lambda+1 spike
     
     parfor jj = 1:numrepeats
         
@@ -42,62 +45,22 @@ for kk = 1:length(Inhibitory_Factor)
             
             Ie_Soma_Axon_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons
             
-            % Multiplier Matrices
-            dt = 1/1000; % step/bin time length 1ms
-            t_total= 0:dt:T-dt ;
-            NumSteps = 1/dt; % Number of steps/bins in time t_total
-            FS_Lambda = 40; % Fast Spiking Neurons, Inhibitory
-            RS_Lambda = 20; % Regular Spiking Neurons, Excitory
+            % Calculate neuron.lambda Change for poisson process
             
-            Lambda_Hat = zeros(NumNeurons,1); % Probability change due to current injection
-            Lambda = zeros(NumNeurons,1);
-            
-            for i = 1:NumNeurons
-                if neuron.type(i) == 1 % If it is an FS (Inhibitory)
-                    Lambda_Hat(i) = FS_Lambda + (FS_Lambda * Ie_Soma_Axon_Neurons(i)); % Lambda_Hat firing rate based off microstimulation
-                    Lambda(i) = FS_Lambda; % Lambda regular, no microstimulation
-                end
-            end
-            
-            Inhibitory_Effect = zeros(NumMotifs,1);
-            Inhibitory_Effect_Lambda = zeros(NumMotifs,1);
-            for i = 1:NumMotifs
-                Inhibitory_Effect(i) = Lambda_Hat(neuron.inhibitory(i)).*Inhibitory_Factor(kk); % Calculates the inhibitory effect from FS firing on RS neurons per motif
-                Inhibitory_Effect_Lambda = FS_Lambda*Inhibitory_Factor(kk);
-            end
-            
-            for i = 1:NumNeurons % Applying inhibitory factor to firing rates of RS Neurons
-                if neuron.type(i) == 2
-                    Lambda_Hat(i) = (RS_Lambda + (RS_Lambda * Ie_Soma_Axon_Neurons(i))) - Inhibitory_Effect(neuron.motif(i)); % Lambda hat firing rate based off stimulation & Inhibitory effect
-                    Lambda(i) = RS_Lambda - Inhibitory_Effect_Lambda; % Lambda regular, no microstimulation
-                else
-                    % Inhib Neurons do not inhib themselves
-                end
-            end
-            
-%             for i = 1:length(Neuron_Connected) % Lambda_Hat Increase for motion tuned pairs
-%                 Lambda_Hat(Neuron_Connected(i,2)) = Lambda_Hat(Neuron_Connected(i,2)) + RS_Lambda.*Axonal_Mult;
-%                 if Neuron_Connected(i,3) == 1 % Bi-Directional connections
-%                     Lambda_Hat(Neuron_Connected(i,1)) = Lambda_Hat(Neuron_Connected(i,1)) + RS_Lambda.*Axonal_Mult;
-%                 end
-%             end
+            lambdahat = lamdafun(neuron,Ie_Soma_Axon_Neurons,kk);
             
             % Finding RB for each neuron
-            Lambda_Spikes = [0 0];
-            Lambda_Spikes(1) = FS_Lambda; % Inhibitory lambda spikes
-            Lambda_Spikes(2) = RS_Lambda; % Excitatory Lambda Spikes
-            NumTrials = 1000;
             
             for i = 1:NumNeurons
                 if isnan(Neuron_RB1(i)) % If RB does not exist, continue, otherwise this neuron is skipped
                     if neuron.oscillatorytype(i) == 1 & Oscillatory_Behavior == 1 % If the neuron has oscillatory behavior then use:
-                        Lambda_Hat_Spikes = Oscillatory_PoissonGen(Lambda_Hat(i), dt, NumTrials);
+                        Lambda_Hat_Spikes = Oscillatory_PoissonGen(lambdahat(i), dt, NumTrials);
                     else % Otherwise use the simple function:
-                        Lambda_Hat_Spikes = Simple_PoissonGen(Lambda_Hat(i), dt, NumTrials);
+                        Lambda_Hat_Spikes = Simple_PoissonGen(lambdahat(i), dt, NumTrials);
                     end
                     
-                    Y = prctile(Lambda_Hat_Spikes,05); % Calculates bottom 5th percentile
-                    if Y > mean(Lambda_Spikes(neuron.type(i))+1)
+                    Y = prctile(Lambda_Hat_Spikes,bpct); % Calculates bottom xth percentile
+                    if Y > mean(neuron.lambda(i)+1)
                         Neuron_RB1(i) = I0(ii);
                     end
                 end
@@ -126,25 +89,4 @@ for kk = 1:length(Inhibitory_Factor)
         Neuron_RBA6 = Neuron_RB;
         save('A6.mat','Neuron_RBA6');
     end
-end
-%% Functions
-
-function Trial_Spikes = Simple_PoissonGen(Lambda, dt, NumTrials)
-NumSteps = 1/dt;
-Spike_Probability = Lambda.*dt;
-X_random = rand(NumTrials,NumSteps);
-Spikes = (X_random < Spike_Probability);
-Trial_Spikes = sum(Spikes, 2);
-end
-
-function Trial_Spikes = Oscillatory_PoissonGen(Firing_Rate, dt, NumTrials)
-dur = 1;
-modIndex = 1; % Higher modulation = higher variability in sine wave
-NumSteps = 1/dt; % Number of time steps
-t = 1:1:NumSteps;  % Time vector
-Freq = randi([35 45],NumTrials,1); % Gamma Hz Oscillation
-Spike_Probability = (Firing_Rate * (1/dur) * (1 + modIndex .* cos(2*pi * Freq * t/NumSteps))) * dt; % Probability of spike occuring in time step
-X_random = 1 + (0-1).*rand(NumTrials,NumSteps); % Random Number that spike probability must overcome
-Spikes = (X_random < Spike_Probability); % 1 = spike, 0 = no spike
-Trial_Spikes = sum(Spikes, 2); % Sum of all spikes per trial
 end
