@@ -4,30 +4,24 @@ load('InitialConditionsFull.mat');
 %% Microstimulation + Optogenetics Optomization
 
 neuron.inhibitoryfactor = 0.01;
-neuron.threshold.rs = 29.0; % Value determined experimentally
-neuron.threshold.fs = 53.0; % % Value determined experimentally
+lambda_needed_RS = 29.0; % Value determined experimentally
+lambda_needed_FS= 53.0; % % Value determined experimentally
+lambdatype = 1;
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 
-% lambdatype:
-% 1 = MS + Optogenetics (all silencing),
-% 2 = MS + Optogenetics (Inhibitory neuron excitation, only)
-% 3 = MS + Optogenetics (Inhibitory neuron excitation, excitatory silencing)
-lambdatype = 1;
-
-
 % Problem Definiton
 
-problem.CostFunction = @(x) MotionRatioCombined(x,NumNeurons,neuron,lambdatype); % Cost
+problem.CostFunction = @(x) MotionRatioCombined(x,NumNeurons,neuron); % Cost
 problem.nVar = 200;       % Number of Unknown (Decision) Variables
 problem.VarMin =  0;  % Lower Bound of Decision Variables
-problem.VarMax =  10000;   % Upper Bound of Decision Variables
+problem.VarMax =  50;   % Upper Bound of Decision Variables
 
 % Parameters of PSO
-params.MaxIt = 100;        % Maximum Number of Iterations
-params.AdaptiveItMax = 100; % Max number of adaptive iterations
+params.MaxIt = 50;        % Maximum Number of Iterations
+params.AdaptiveItMax = 5; % Max number of adaptive iterations
 params.AdaptiveItThreshold = .01; % if the absolute value of it - (it-1) is less than this, we say there is little enough change to end the search
-params.nPop = 2000;           % Population Size (Swarm Size)
+params.nPop = 1000;           % Population Size (Swarm Size)
 params.w = 1;               % Intertia Coefficient
 params.wdamp = 1;        % Damping Ratio of Inertia Coefficient
 params.c1 = 2;              % Personal Acceleration Coefficient
@@ -78,7 +72,7 @@ grid on;
 
 
 %% Functions
-function z = MotionRatioCombined(x,NumNeurons,neuron,lambdatype) % Cost
+function z = MotionRatioCombined(x,NumNeurons,neuron) % Cost
 % z = solution to be minimzied
 % ec = all electrode variables
 ec = x(1:100); % Electrical stimulation values
@@ -101,13 +95,13 @@ Ie_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly 
 Ir_Neurons = Ir_Soma_Neurons; % Summation of current directly from stimulus. AU irridance
 
 % Calculate Lambda Hat
-[lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Ir_Neurons,neuron.inhibitoryfactor,lambdatype);
+[lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Ir_Neurons,inhibitoryfactor,lambdatype);
 
 % neuron activation
 
 Neuron_Activated = zeros(NumNeurons,1);
-Neuron_Activated(neuron.excitatory) = lambdahat(neuron.excitatory) > neuron.threshold.rs;
-Neuron_Activated(neuron.inhibitory) = lambdahat(neuron.inhibitory) > neuron.threshold.fs;
+Neuron_Activated(neuron.excitatory) = lambdahat(neuron.excitatory) > lambda_needed_RS;
+Neuron_Activated(neuron.inhibitory) = lambdahat(neuron.inhibitory) > lambda_needed_FS;
 
 % Ratio Calculation
 

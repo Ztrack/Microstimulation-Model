@@ -166,4 +166,4 @@ subplot(2,1,2); imagesc(Stim_int); colorbar; xlabel('um'); ylabel('um'); title('
 
 
 
-%save lightspread;
+%save('lightspread.mat','lightspread');
