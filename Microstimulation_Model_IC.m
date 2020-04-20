@@ -392,7 +392,7 @@ population.motion.indices = find(population.motion.map > 0);
 % hillic is in the direction of the current stimulus, it is easier for it
 % to become excited.
 
-Directional_Current_Mult = zeros(NumNeurons,length(electrode.x));
+neuron.dirmult = zeros(NumNeurons,length(electrode.x));
 Axon_Direction_Theta = zeros(NumNeurons,1);
 for i = 1:NumNeurons
     if neuron.direction(i) == 1 %(left = 180 degrees)
@@ -421,9 +421,9 @@ for i = 1:NumNeurons
         absDiffDeg = min(360-normDeg, normDeg);
         
         if absDiffDeg < theta_threshold % If angle meets critera then:
-            Directional_Current_Mult(i,ii) = 1; % Stores directional current multiplier as full
+            neuron.dirmult(i,ii) = 1; % Stores directional current multiplier as full
         else % If angle is not within criteria
-            Directional_Current_Mult(i,ii) = 0.25; % Stores current summation as depreciated
+            neuron.dirmult(i,ii) = 0.25; % Stores current summation as depreciated
         end
     end
 end

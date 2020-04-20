@@ -44,7 +44,7 @@ options.color_area = [0 128 0]./255; % Green : All Neurons
 options.color_line = [0 128 0]./255;
 Neuron_Excited_Per_Step1 = zeros(numrepeats,length(I0)); % Calculates the number of neurons excited at every step of current
 Neuron_Excited_Per_Step2 = Neuron_Excited_Per_Step1; Neuron_Excited_Per_Step3 = Neuron_Excited_Per_Step1; Neuron_Excited_Per_Step4 = Neuron_Excited_Per_Step1; Neuron_Excited_Per_Step5 = Neuron_Excited_Per_Step1;
-for i = 1:length(I0)
+for i = 1:100
     Neuron_Excited_Per_Step1(:,i) = sum(Neuron_RB                          <=I0(i),2)*100/NumNeurons;
     Neuron_Excited_Per_Step2(:,i) = sum(Neuron_RB(:,neuron.excitatory)     <=I0(i),2)*100/length(neuron.excitatory);
     Neuron_Excited_Per_Step3(:,i) = sum(Neuron_RB(:,neuron.inhibitory)     <=I0(i),2)*100/length(neuron.inhibitory);
