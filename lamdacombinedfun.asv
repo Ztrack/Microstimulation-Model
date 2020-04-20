@@ -1,10 +1,20 @@
-function [lambdahat] = lamdafun(neuron,Ie_Soma_Axon_Neurons,inhibitoryfactor)
+function [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Ir_Neurons,inhibitoryfactor,lambdatype)
 
 % lambdatype:
-% 1 = Microstimulation only
+% 1 = MS + Optogenetics (all inhibition),
+% 2 = MS + Optogenetics (Inhibitory neuron excitation, only)
 
 % Calculating Lambda hat based off microstimulation
-lambdahat = neuron.lambda + Ie_Soma_Axon_Neurons';
+if lambdatype == 1
+    lambdahat = neuron.lambda + Ie_Neurons' - Ir_Neurons';
+elseif lambdatype == 2
+    lambdahat = neuron.lambda + Ie_Neurons';
+    lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + Ir_Neurons(neuron.inhibitory)';
+elseif lambdatype == 2
+    lambdahat = neuron.lambda + Ie_Neurons';
+    lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + Ir_Neurons(neuron.inhibitory)';
+    lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + Ir_Neurons(neuron.inhibitory)';
+end
 
 % Calculating Inhibition effect on each motif. Rate-based calculation
 % Effect = summation of (new-old)*factor for each inhibitory in motif
@@ -18,14 +28,5 @@ end
 for i = 1:length(neuron.excitatory)
     lambdahat(neuron.excitatory(i)) = lambdahat(neuron.excitatory(i)) - Inhibitory_Effect(neuron.motif(i));
 end
-
-% Neuron connectivity between motion neurons - currently unused code
-
-%             for i = 1:length(Neuron_Connected) % lambdahat Increase for motion tuned pairs
-%                 lambdahat(Neuron_Connected(i,2)) = lambdahat(Neuron_Connected(i,2)) + neuron.lambda(2).*Axonal_Mult;
-%                 if Neuron_Connected(i,3) == 1 % Bi-Directional connections
-%                     lambdahat(Neuron_Connected(i,1)) = lambdahat(Neuron_Connected(i,1)) + neuron.lambda(2).*Axonal_Mult;
-%                 end
-%             end
 
 end

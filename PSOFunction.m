@@ -56,6 +56,7 @@ function out = PSOFunction(problem, params)
     particle = repmat(empty_particle, nPop, 1);
 
     % Initialize Global Best
+    GlobalBest.Position = zeros(1,nVar);
     GlobalBest.Cost = inf;
 
     % Initialize Population Members
