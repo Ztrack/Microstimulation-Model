@@ -4,8 +4,10 @@ load('InitialConditionsFull.mat');
 %% Microstimulation + Optogenetics Optomization
 
 neuron.inhibitoryfactor = 0.01;
-neuron.threshold.rs = 29.0; % Value determined experimentally
-neuron.threshold.fs = 53.0; % % Value determined experimentally
+%neuron.threshold.rs = 29.0; % Value determined for 95%
+%neuron.threshold.fs = 53.0; % % Value determined for 95%
+neuron.threshold.rs = 21.0; % Value determined experimentally
+neuron.threshold.fs = 41.0; % % Value determined experimentally
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 
@@ -21,7 +23,7 @@ lambdatype = 1;
 problem.CostFunction = @(x) MotionRatioCombined(x,NumNeurons,neuron,lambdatype); % Cost
 problem.nVar = 200;       % Number of Unknown (Decision) Variables
 problem.VarMin =  0;  % Lower Bound of Decision Variables
-problem.VarMax =  10000;   % Upper Bound of Decision Variables
+problem.VarMax =  1000;   % Upper Bound of Decision Variables
 
 % Parameters of PSO
 params.MaxIt = 100;        % Maximum Number of Iterations
@@ -29,9 +31,9 @@ params.AdaptiveItMax = 100; % Max number of adaptive iterations
 params.AdaptiveItThreshold = .01; % if the absolute value of it - (it-1) is less than this, we say there is little enough change to end the search
 params.nPop = 2000;           % Population Size (Swarm Size)
 params.w = 1;               % Intertia Coefficient
-params.wdamp = 1;        % Damping Ratio of Inertia Coefficient
-params.c1 = 2;              % Personal Acceleration Coefficient
-params.c2 = 2;              % Social Acceleration Coefficient
+params.wdamp = .99;        % Damping Ratio of Inertia Coefficient
+params.c1 = 5;              % Personal Acceleration Coefficient
+params.c2 = 5;              % Social Acceleration Coefficient
 params.ShowIterInfo = true; % Flag for Showing Iteration Informatin
 
 %% Calling PSO - Single

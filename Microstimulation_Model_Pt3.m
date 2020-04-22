@@ -30,6 +30,7 @@ for i = 1:NumNeurons
     DistanceNeurons(i) = min(nonzeros(sqrt((neuron.x(i)-neuron.x).^2 + (neuron.y(i) - neuron.y).^2)));
 end
 %% Plots Neuron RB Vs Current
+currentstop = 30000;
 
 % Options for plotting
 options = struct;
@@ -52,6 +53,9 @@ for i = 1:length(I0)
     Neuron_Excited_Per_Step5(:,i) = sum(Neuron_RB(:,neuron.nonmotion.number) <=I0(i),2)*100/length(neuron.nonmotion.number);
 end
 plot_areaerrorbar(Neuron_Excited_Per_Step1,options); xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt*h); title('Neuron Activation Through Center Electrode'); xlabel('Center Electrode Current AU'); ylabel('Percentage Activated Neurons');
+ylim([0 100]);
+xlim([0 currentstop/h]);
+hold off
 
 options.handle     = figure; set(gcf,'Position',[100 100 800 700]);
 options.color_area = [0 0 255]./255; % Blue : Excitatory
@@ -65,7 +69,7 @@ title('Excitatory / Inhibitory Activation Through Center Electrode'); xlabel('Ce
 xline(find(mean(Neuron_Excited_Per_Step2) >= 50,1),'color','blue'); xline(find(mean(Neuron_Excited_Per_Step3) >= 50,1),'color','red'); 
 legend('','Excitatory','','Inhibitory','50% Excitatory','50% Inhibitory'); 
 ylim([0 100]);
-xlim([0 30000/h]);
+xlim([0 currentstop/h]);
 disp((find(mean(Neuron_Excited_Per_Step2) >= 50,1)-(find(mean(Neuron_Excited_Per_Step3) >= 50,1)))*50);
 hold off
 
@@ -81,6 +85,7 @@ title('Motion Activation Through Center Electrode'); xt = get(gca, 'XTick'); set
 xline(find(mean(Neuron_Excited_Per_Step4) >= 50,1),'color',[0 128 0]./255); xline(find(mean(Neuron_Excited_Per_Step5) >= 50,1),'color',[255 165 0]./255);
 legend('','Motion','','Non-Motion','50% Motion','50% Non-Motion');
 ylim([0 100]);
+xlim([0 currentstop/h]);
 disp((find(mean(Neuron_Excited_Per_Step4) >= 50,1)-(find(mean(Neuron_Excited_Per_Step5) >= 50,1)))*50)
 hold off
 
@@ -121,6 +126,7 @@ options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerror
 title('Pad Activation Through Center Electrode'); xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt*h); xlabel('Center Electrode Current AU'); ylabel('Percentage Activated Neurons'); 
 legend('','Middle Pad','','1 Pad Away','','1.5 Pads Away','','2 Pads Away','','2.5 Pads Away');
 ylim([0 100]); 
+xlim([0 currentstop/h]);
 hold off
 
 %% Plots Neuron RB Vs Distance

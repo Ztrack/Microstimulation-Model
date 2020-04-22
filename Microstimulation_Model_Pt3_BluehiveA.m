@@ -57,7 +57,7 @@ for kk = 1:length(neuron.inhibitoryfactor)
             
             % Calculate neuron.lambda Change for poisson process
             
-            lambdahat = lamdafun(neuron,Ie_Soma_Axon_Neurons,neuron.inhibitoryfactor(kk);
+            lambdahat = lamdafun(neuron,Ie_Soma_Axon_Neurons,neuron.inhibitoryfactor(kk));
             
             % Finding RB for each neuron
             
