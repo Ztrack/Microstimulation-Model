@@ -5,8 +5,12 @@ calctype = 1;
 Motion_Axon = 0; % if set =1, enabled, connections between relevant motion neurons is established
 Oscillatory_Behavior = 1; % is set =1, .33 of all inhibitory neurons will use Oscillatory poisson function
 Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
+lambdatype = 1;
 
 % Apply Features
+if lambdatype == 1
+    Ir_Neurons = 0;
+end
 if calctype == 1 %load initial condition
     load('InitialConditionsFull.mat')
 else
@@ -47,17 +51,19 @@ for kk = 1:length(neuron.inhibitoryfactor)
         for ii = 1:length(I0)
             Ie_Axon_Neurons = zeros(NumNeurons,1); % Initialize current vector
             Ie_Soma_Neurons = zeros(NumNeurons,1);
+            Ir_Soma_Neurons = zeros(NumNeurons,1); % Initialize irridance
             
-            for i = 1:length(ElectrodeNo) % Summation of current for every neuron component by every electrode & its corresponding current
-                Ie_Axon_Neurons = Ie_Axon_Neurons + neuron.io.axon(:,ElectrodeNo(i)).*I0(ii);
-                Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*I0(ii).*neuron.dirmult(:,ElectrodeNo);
+            for i = 1:length(ec) % Summation of current for every neuron component by every electrode & its corresponding current
+                Ie_Axon_Neurons = Ie_Axon_Neurons + neuron.io.axon(:,ElectrodeNo(i)).*ec(i);
+                Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*ec(i).*neuron.dirmult(:,i);
+                Ir_Soma_Neurons = Ir_Soma_Neurons + neuron.oo.soma(:,ElectrodeNo(i)).*eo(i);
             end
-            
-            Ie_Soma_Axon_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons
+
+            Ie_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons. AU Current
+            Ir_Neurons = Ir_Soma_Neurons; % Summation of current directly from stimulus. AU irridance
             
             % Calculate neuron.lambda Change for poisson process
-            
-            lambdahat = lamdafun(neuron,Ie_Soma_Axon_Neurons,neuron.inhibitoryfactor(kk));
+            [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Ir_Neurons,neuron.inhibitoryfactor(kk),lambdatype);
             
             % Finding RB for each neuron
             

@@ -73,12 +73,12 @@ end
 
 % Plotting
 figure;
-x = 1:500; % Distance
+x = 1:5000; % Distance
 Y1 = []; Y2 = [];
 for i = 1:length(angles)
     %Y = a(i).*x.^b(i)+c(i);
     %Y(Y<0) = 0;
-    Y = a(i).*exp(b(i).*x); %+c(i).*exp(d(i).*x);
+    Y = a(i).*exp(b(i).*x) %+c(i).*exp(d(i).*x);
     plot(Y);
     hold on;
     Y1(i,:) = Y;
@@ -101,13 +101,11 @@ ylabel('Magnitude of Power');
 legend('1-45','46-90','91-135','136-180','181-225','226-270','271-315','316-360');
 
 Y3 = mean(Y1);
-%lightspread.averaged = fit(x',Y3','Power2');
-%lightspread.equation = ['a*x^b+c'];
-lightspread.averaged = fit(x',Y3','Exp1');
-lightspread.equation = ['a*exp(b*x)'];
+lightspread.averaged = fit(x',Y3','Power2');
+lightspread.equation = ['a*x^b+c'];
 lightspread.all.a = a;
 lightspread.all.b = b;
-%lightspread.all.c = c;
+lightspread.all.c = c;
 
 % General Averaged Case
 figure; 
