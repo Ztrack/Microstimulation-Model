@@ -313,15 +313,16 @@ end
 neuron.io.soma = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Somas
 neuron.io.axon = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
 neuron.oo.soma = zeros(NumNeurons,length(electrode.x)); % Stores light stimulus area summation component of Somas
-
+lightspread.calc = [];
 for i = 1:NumNeurons
 
     for j = 1:length(electrode.x)
         
         neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,neuron.indices(i).axon).^2))); % sums all inhibitory axon current feedback
         neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
-        neuron.oo.soma(i,j) = lightspread.averaged.a.*sum(sum(Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii))).^lightspread.averaged.b+lightspread.averaged.c; % Light Intensity Calculation
-    
+        lightspread.calc = lightspread.averaged.a.*Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^lightspread.averaged.b+lightspread.averaged.c; % Light Intensity Calculation
+        lightspread.calc(lightspread.calc < 0) = 0;
+        neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
     end
     
 end
