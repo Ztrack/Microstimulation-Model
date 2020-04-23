@@ -15,7 +15,7 @@ neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 % 1 = MS + Optogenetics (all silencing),
 % 2 = MS + Optogenetics (Inhibitory neuron excitation, only)
 % 3 = MS + Optogenetics (Inhibitory neuron excitation, excitatory silencing)
-lambdatype = 1;
+lambdatype = 3;
 
 
 % Problem Definiton
@@ -26,45 +26,50 @@ problem.VarMin =  0;  % Lower Bound of Decision Variables
 problem.VarMax =  1000;   % Upper Bound of Decision Variables
 
 % Parameters of PSO
-params.MaxIt = 100;        % Maximum Number of Iterations
-params.AdaptiveItMax = 100; % Max number of adaptive iterations
+params.MaxIt = 50;        % Maximum Number of Iterations
+params.AdaptiveItMax = 50; % Max number of adaptive iterations
 params.AdaptiveItThreshold = .01; % if the absolute value of it - (it-1) is less than this, we say there is little enough change to end the search
 params.nPop = 2000;           % Population Size (Swarm Size)
 params.w = 1;               % Intertia Coefficient
 params.wdamp = .99;        % Damping Ratio of Inertia Coefficient
 params.c1 = 5;              % Personal Acceleration Coefficient
 params.c2 = 5;              % Social Acceleration Coefficient
-params.ShowIterInfo = true; % Flag for Showing Iteration Informatin
+params.ShowIterInfo = false; % Flag for Showing Iteration Informatin
 
 %% Calling PSO - Single
 
-out = PSOFunction(problem, params);
-
-BestSol = out.BestSol;
-BestCosts = out.BestCosts;
-BestIt = out.NumIt;
-
-figure;
-plot(BestCosts, 'LineWidth', 2);
-semilogy(BestCosts, 'LineWidth', 2);
-xlabel('Iteration Number');
-ylabel('Non-Motion / Motion Neuron Ratio');
-title('Optimization Performance');
-grid on;
+% out = PSOFunction(problem, params);
+% 
+% BestSol = out.BestSol;
+% BestCosts = out.BestCosts;
+% BestIt = out.NumIt;
+% 
+% figure;
+% plot(BestCosts, 'LineWidth', 2);
+% semilogy(BestCosts, 'LineWidth', 2);
+% xlabel('Iteration Number');
+% ylabel('Non-Motion / Motion Neuron Ratio');
+% title('Optimization Performance');
+% grid on;
 
 %% Calling PSO - Iterative
-% it = 1000:1000:1000000;
-% for i = 1:length(it)
-%     params.nPop = it(i);
-%     out = PSOFunction(problem, params);
-%     Iterative.Costs(i) = out.BestSol.Cost;
-%     BestIt = out.NumIt;
-%     
-%     if Iterative.Costs(i) == min(Iterative.Costs)
-%         Iterative.BestCost = Iterative.Costs(i);
-%         Iterative.BestSolPos = out.BestSol.Position;
-%     end
-% end
+it = 1000:1000:30000;
+numrepeats = 30;
+
+for ii = 1:numrepeats
+for i = 1:length(it)
+    params.nPop = it(i);
+    out = PSOFunction(problem, params);
+    Iterative.Costs(ii,i) = out.BestSol.Cost;
+    %BestIt = out.NumIt;
+    
+    if Iterative.Costs(ii,i) == min(Iterative.Costs)
+        Iterative.BestCost = Iterative.Costs(i);
+        Iterative.BestSolPos = out.BestSol.Position;
+    end
+end
+end
+
 
 % load('Iterative1.mat'); load('Iterative2.mat'); load('Iterative3.mat');
 % numit = 20;

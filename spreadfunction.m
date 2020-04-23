@@ -73,7 +73,7 @@ end
 
 % Plotting
 figure;
-x = 1:500; % Distance
+x = 1:2000; % Distance
 Y1 = []; Y2 = [];
 for i = 1:length(angles)
     %Y = a(i).*x.^b(i)+c(i);
@@ -166,7 +166,6 @@ Ed = bwdist(Stim_Loc); Ed(25,25) = 1;
 Stim_int = zeros(50,50);
 Stim_int = 1000./Ed;
 subplot(2,1,2); imagesc(Stim_int); colorbar; xlabel('um'); ylabel('um'); title('Current Intensity Distribution');
-
 
 
 %save('lightspread.mat','lightspread');

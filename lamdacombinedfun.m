@@ -15,7 +15,7 @@ function [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Ir_Neurons,inhibitoryf
 if lambdatype == 1
     lambdahat = neuron.lambda + neuron.lambda.*Ie_Neurons'; % MS only
 elseif lambdatype == 2
-    lambdahat = neuron.lambda + neuron.lambda.*Ir_Neurons'; % Opto only
+    lambdahat = neuron.lambda + neuron.lambda.*Ir_Neurons'; % Opto only excitation
 elseif lambdatype == 3
     lambdahat = neuron.lambda + neuron.lambda.*(Ie_Neurons' + Ir_Neurons'); % MS + opto for all
     elseif lambdatype == 4
