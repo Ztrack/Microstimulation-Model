@@ -10,8 +10,8 @@ theta_threshold = 45; % angle difference threshold - If the neuron axon is out o
 
 % Population Properties
 NumNeurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
-Excitatory_Inhibitory_Ratio = 1/4; % % Number of Inhibitory / Excitatory Neurons in a motif
-NumNeuronsMotif = 5;
+NumNeuronsMotif = 5; % # of neurons in each motif
+NumInhibitoryMotif = 1; % # of inhibitory neurons in motif
 NumMotifs = NumNeurons/NumNeuronsMotif; % # Neuron in Motif.
 Inhibitory_Oscillatory_Percentage = .33; % Percentage of inhibitory neurons which oscillate
 NeuronMotionRatio = 0.2; % Ratio of Motion Neurons to non-motion neurons. based on population of excitatory neurons
@@ -33,7 +33,8 @@ NumSteps = 1/dt;
 
 %% Neuron Definitions
 
-neuron.type = repmat([1,2,2,2,2],1,NumMotifs); % Defines what type of neuron this number is. Inhibitory =1, Excitatory = 2
+count = ones(1,NumNeuronsMotif); count(NumInhibitoryMotif+1:end) = 2;
+neuron.type = repmat([count],1,NumMotifs); % Defines what type of neuron this number is. Inhibitory =1, Excitatory = 2
 neuron.motif = repmat(1:1:NumMotifs,NumNeuronsMotif,1); neuron.motif = neuron.motif(:)'; % Defines which motif the neuron belongs to
 neuron.inhibitory = find(neuron.type == 1); % Array with all inhibitory neurons
 neuron.excitatory = find(neuron.type == 2); % Array with all Excitatory neurons
@@ -319,15 +320,13 @@ for i = 1:NumNeurons
     for j = 1:length(electrode.x)
         
         neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,neuron.indices(i).axon).^2))); % sums all inhibitory axon current feedback
-        neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
-        lightspread.calc = lightspread.averaged.a.*Stim_Distance_Map(j,neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii).^lightspread.averaged.b+lightspread.averaged.c; % Light Intensity Calculation
-        lightspread.calc(lightspread.calc < 0) = 0;
+        neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.indices(i).soma).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
+        lightspread.calc = lightspread.averaged.a.*exp(lightspread.averaged.b.*Stim_Distance_Map(j,neuron.indices(i).soma)); % Light Intensity Calculation
+        lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
         neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
     end
     
 end
-
-neuron.oo.soma(neuron.oo.soma < 0) = 0; % Fixing for negatives
 
 % Axon Generation for motion-tuned neural connections
 % I0_Motion_Neuron_Connections = zeros(length(Neuron_Connected),length(electrode.x));
@@ -431,4 +430,4 @@ end
 %% Cleaning output
 
 clear ('Stim_Distance_Map','rp','rp_x','rp_y','Stim_Distance','Stim_Loc','PadSize','Neuron_points_Matrix','Ed');
-save InitialConditionsFull.mat;
+save InitialConditionsFullB.mat;

@@ -5,12 +5,9 @@ calctype = 1;
 Motion_Axon = 0; % if set =1, enabled, connections between relevant motion neurons is established
 Oscillatory_Behavior = 1; % is set =1, .33 of all inhibitory neurons will use Oscillatory poisson function
 Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
-lambdatype = 1;
+lambdatype = 2;
 
 % Apply Features
-if lambdatype == 1
-    Ir_Neurons = 0;
-end
 if calctype == 1 %load initial condition
     load('InitialConditionsFull.mat')
 else
@@ -24,10 +21,10 @@ if Motion_Axon == 0
 end
 
 % Parameters
-Axonal_Mult = .01;
 bpct = 50; % Bottom Percentile for Rheobase calculation. 50 for 50%, 05 for 95% CI.
 neuron.inhibitoryfactor = [0.01 0.03 0.1 0.125 0.15 0.2];
 %neuron.inhibitoryfactor = [0.01];
+neuron.lambda = zeros(1,NumNeurons);
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 NumTrials = 100;
@@ -35,11 +32,12 @@ NumTrials = 100;
 %% Loop Start
 h = 100; % Step size
 I0 = 0:h:100000;  % Current Steps
-numrepeats = 100; % Number of overall repeats
+numrepeats = 12; % Number of overall repeats
 ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
 ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
-
-
+ 
+for kkk = 1:2
+    lambdatype = kkk;
 for kk = 1:length(neuron.inhibitoryfactor)
     
     Neuron_RB = NaN(numrepeats,NumNeurons); % Rhoebase for every neuron, stored as I0 which causes neuron.lambda+1 spike
@@ -53,10 +51,10 @@ for kk = 1:length(neuron.inhibitoryfactor)
             Ie_Soma_Neurons = zeros(NumNeurons,1);
             Ir_Soma_Neurons = zeros(NumNeurons,1); % Initialize irridance
             
-            for i = 1:length(ec) % Summation of current for every neuron component by every electrode & its corresponding current
-                Ie_Axon_Neurons = Ie_Axon_Neurons + neuron.io.axon(:,ElectrodeNo(i)).*ec(i);
-                Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*ec(i).*neuron.dirmult(:,i);
-                Ir_Soma_Neurons = Ir_Soma_Neurons + neuron.oo.soma(:,ElectrodeNo(i)).*eo(i);
+            for i = 1:length(ElectrodeNo) % Summation of current for every neuron component by every electrode & its corresponding current
+                Ie_Axon_Neurons = Ie_Axon_Neurons + neuron.io.axon(:,ElectrodeNo(i));
+                Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*neuron.dirmult(:,i);
+                Ir_Soma_Neurons = Ir_Soma_Neurons + neuron.oo.soma(:,ElectrodeNo(i));
             end
 
             Ie_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons. AU Current
@@ -86,22 +84,37 @@ for kk = 1:length(neuron.inhibitoryfactor)
     end
     
     %% Export
-    if kk == 1
-        solrb.a1 = Neuron_RB;
-    elseif kk ==2
-        solrb.a2 = Neuron_RB;
-    elseif kk ==3
-        solrb.a3 = Neuron_RB;
-    elseif kk ==4
-        solrb.a4 = Neuron_RB;
-    elseif kk ==5
-        solrb.a5 = Neuron_RB;
-    elseif kk ==6
-        solrb.a5 = Neuron_RB;
+    if lambdatype == 1
+        if kk == 1
+            solrb.e1 = Neuron_RB;
+        elseif kk ==2
+            solrb.e2 = Neuron_RB;
+        elseif kk ==3
+            solrb.e3 = Neuron_RB;
+        elseif kk ==4
+            solrb.e4 = Neuron_RB;
+        elseif kk ==5
+            solrb.e5 = Neuron_RB;
+        elseif kk ==6
+            solrb.e5 = Neuron_RB;
+        end
+    elseif lambdatype == 2
+        if kk == 1
+            solrb.o1 = Neuron_RB;
+        elseif kk ==2
+            solrb.o2 = Neuron_RB;
+        elseif kk ==3
+            solrb.o3 = Neuron_RB;
+        elseif kk ==4
+            solrb.o4 = Neuron_RB;
+        elseif kk ==5
+            solrb.o5 = Neuron_RB;
+        elseif kk ==6
+            solrb.o5 = Neuron_RB;
+        end
     end
-    
 end
-
+end
 if calctype == 1
     save('solrb1.mat','solrb','I0','h','numrepeats','ElectrodeNo');
 else

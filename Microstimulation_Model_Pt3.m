@@ -5,8 +5,8 @@ set(0,'defaultAxesLineWidth',3)
 
 load('InitialConditionsFull.mat')
 load('solrb1.mat');
-Neuron_RB = solrb.a1;
-
+Neuron_RB = solrb.o1;
+%Neuron_RB = solrb.e1;
 %% Calculations
 
 for i = 1:NumMotifs
@@ -30,7 +30,7 @@ for i = 1:NumNeurons
     DistanceNeurons(i) = min(nonzeros(sqrt((neuron.x(i)-neuron.x).^2 + (neuron.y(i) - neuron.y).^2)));
 end
 %% Plots Neuron RB Vs Current
-currentstop = 30000;
+currentstop = 100000;
 
 % Options for plotting
 options = struct;
