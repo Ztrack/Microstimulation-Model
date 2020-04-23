@@ -9,7 +9,7 @@ calctype = 2;
 Motion_Axon = 0; % if set =1, enabled, connections between relevant motion neurons is established
 Oscillatory_Behavior = 1; % is set =1, .33 of all inhibitory neurons will use Oscillatory poisson function
 Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
-lambdatype = 2;
+lambdatype = 1;
 
 % Apply Features
 if Directional_Current_Modifier == 0
@@ -22,7 +22,7 @@ end
 % Parameters
 
 bpct = 50; % Bottom Percentile for Rheobase calculation. 50 for 50%, 05 for 95% CI.
-inhibitoryfactor = [0.01];
+inhibitoryfactor = [0.01 0.005 0.001 0.0005 0.0001];
 NumTrials = 100;
 
 %% Loop Start
@@ -34,16 +34,15 @@ ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest e
  
 for kkk = 1:2
     lambdatype = kkk;
-for kk = 1:5
-    Neuron_RB = NaN(numrepeats,NumNeurons); % Rhoebase for every neuron, stored as I0 which causes neuron.lambda+1 spike
+for kk = 1:length(inhibitoryfactor)
     load('InitialConditionsFullB.mat');
     
-    NumInhibitoryMotif = kk; % Number of inhibitory neurons
+    NumInhibitoryMotif = 2; % Number of inhibitory neurons
     NumNeuronsMotif = 5+NumInhibitoryMotif; % Reinitializes # Neurons per motif
     NumNeurons = NumMotifs*NumNeuronsMotif;
     a = zeros(1,NumInhibitoryMotif); b= ones(1,5-NumInhibitoryMotif); a = [a b]; a = [a 0 0 0 0 0];
     Extra_Inhib_Neurons = repmat(a,1,NumMotifs); Extra_Inhib_Neurons = find(Extra_Inhib_Neurons == 1); % Identifies extra neurons
-
+    Neuron_RB = NaN(numrepeats,NumNeurons); % Rhoebase for every neuron, stored as I0 which causes neuron.lambda+1 spike
     neuron.io.axon(Extra_Inhib_Neurons,:) = []; % Erases data from extra neurons
     neuron.io.soma(Extra_Inhib_Neurons,:) = []; % Erases data from extra neurons
     neuron.motif(Extra_Inhib_Neurons) = [];
@@ -74,7 +73,7 @@ for kk = 1:5
             Ir_Neurons = Ir_Soma_Neurons; % Summation of current directly from stimulus. AU irridance
             
             % Calculate neuron.lambda Change for poisson process
-            [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Ir_Neurons,inhibitoryfactor,lambdatype);
+            [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Ir_Neurons,inhibitoryfactor(kk),lambdatype);
             
             % Finding RB for each neuron
             
