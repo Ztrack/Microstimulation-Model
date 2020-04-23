@@ -35,10 +35,11 @@ I0 = 0:h:100000;  % Current Steps
 numrepeats = 12; % Number of overall repeats
 ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
 ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
- 
+kk = 1;
+
 for kkk = 1:2
     lambdatype = kkk;
-for kk = 1:length(neuron.inhibitoryfactor)
+%for kk = 1:length(neuron.inhibitoryfactor)
     
     Neuron_RB = NaN(numrepeats,NumNeurons); % Rhoebase for every neuron, stored as I0 which causes neuron.lambda+1 spike
     
@@ -113,7 +114,7 @@ for kk = 1:length(neuron.inhibitoryfactor)
             solrb.o5 = Neuron_RB;
         end
     end
-end
+%end
 end
 if calctype == 1
     save('solrb1.mat','solrb','I0','h','numrepeats','ElectrodeNo');
