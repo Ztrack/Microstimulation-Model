@@ -299,7 +299,7 @@ electrode.x = electrode.x(:); electrode.y = electrode.y(:);
 
 % Now we must determine how far each square is to each electrode for later
 % intergrating.
-load('lightspread.mat');
+
 Stim_Distance_Map = zeros(length(electrode.x),sx,sy);
 for i = 1:length(electrode.x)
     Stim_Loc =  zeros(sx, sy); % Location of stimulus
@@ -310,7 +310,7 @@ for i = 1:length(electrode.x)
 end
 
 %% Neuron And Axon Area Summation
-
+load('lightspread.mat');
 neuron.io.soma = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Somas
 neuron.io.axon = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
 neuron.oo.soma = zeros(NumNeurons,length(electrode.x)); % Stores light stimulus area summation component of Somas
@@ -319,11 +319,13 @@ for i = 1:NumNeurons
 
     for j = 1:length(electrode.x)
         
-        neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,neuron.indices(i).axon).^2))); % sums all inhibitory axon current feedback
+        neuron.io.axon(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.indices(i).axon).^2)); % Summation 1/r^2 area component of axon
         neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.indices(i).soma).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
+        
         lightspread.calc = lightspread.averaged.a.*exp(lightspread.averaged.b.*Stim_Distance_Map(j,neuron.indices(i).soma)); % Light Intensity Calculation
-        lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
+        % lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
         neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
+        
     end
     
 end
@@ -430,4 +432,4 @@ end
 %% Cleaning output
 
 clear ('Stim_Distance_Map','rp','rp_x','rp_y','Stim_Distance','Stim_Loc','PadSize','Neuron_points_Matrix','Ed');
-save InitialConditionsFullB.mat;
+save InitialConditionsFull.mat;

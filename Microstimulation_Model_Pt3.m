@@ -36,7 +36,7 @@ currentstop = 100000;
 stepsol.current.all = zeros(numrepeats,length(I0)); % Calculates the number of neurons excited at every step of current
 stepsol.current.excitatory = stepsol.current.all; stepsol.current.inhibitory = stepsol.current.all; stepsol.current.motion = stepsol.current.all; stepsol.current.nonmotion = stepsol.current.all;
 for i = 1:length(I0)
-    stepsol.current.all(:,i) = sum(Neuron_RB                          <=I0(i),2)*100/NumNeurons;
+    stepsol.current.all(:,i) = sum(solrb.e1                          <=I0(i),2)*100/NumNeurons;
     stepsol.current.excitatory(:,i) = sum(solrb.e1(:,neuron.excitatory)     <=I0(i),2)*100/length(neuron.excitatory);
     stepsol.current.inhibitory(:,i) = sum(solrb.e1(:,neuron.inhibitory)     <=I0(i),2)*100/length(neuron.inhibitory);
     stepsol.current.motion(:,i) = sum(solrb.e1(:,neuron.motion.number)    <=I0(i),2)*100/length(neuron.motion.number);
@@ -56,7 +56,7 @@ options.line_width = 2;
 options.error = 'c95';
 options.legendswitch = 0; % Legend 0 = off, 1 = on
 options.legend = [];
-
+%%
 options.handle     = figure; set(gcf,'Position',[100 100 800 700]);
 options.color_area = [0 128 0]./255; % Green : All Neurons
 plot_areaerrorbar(stepsol.current.all,options); xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt*h); title('Neuron Activation Through Center Electrode'); xlabel('Center Electrode Current AU'); ylabel('Percentage Activated Neurons');

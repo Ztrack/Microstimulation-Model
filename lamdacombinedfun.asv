@@ -32,16 +32,14 @@ elseif lambdatype == 7
     lambdahat = lambdahat - Ir_Neurons'; % Inhibitory opsin in all cells
     lambdahat(neuron.excitatory) = lambdahat(neuron.excitatory) + Ir_Neurons(neuron.excitatory)'; % Excitatory opsin in excitatory neurons
 end
-x = 1:500;
-y = x*0.00025;
 
 % Calculating Inhibition effect on each motif. Rate-based calculation
 % Effect = summation of (new-old)*factor for each inhibitory in motif
 Inhibitory_Effect = zeros(1,length(neuron.motif));
 for i = 1:length(neuron.inhibitory)
-    Inhibitory_Effect(neuron.motif(i)) = Inhibitory_Effect(i) + lambdahat(neuron.inhibitory(i))*0.00025;
+    Inhibitory_Effect(neuron.motif(i)) = Inhibitory_Effect(i) + lambdahat(neuron.inhibitory(i)).*(lambdahat(neuron.inhibitory(i)).*(inhibitoryfactor/40));
 end
-
+neuron.lambda(1)*(neuron.lambda(1).*(inhibitoryfactor/40))
 % Applying Inhibition onto excitatory neurons
 % New lambda = last calculation - inhibitory effect of that motif
 for i = 1:length(neuron.excitatory)

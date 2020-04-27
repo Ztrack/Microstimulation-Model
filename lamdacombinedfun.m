@@ -37,7 +37,7 @@ end
 % Effect = summation of (new-old)*factor for each inhibitory in motif
 Inhibitory_Effect = zeros(1,length(neuron.motif));
 for i = 1:length(neuron.inhibitory)
-    Inhibitory_Effect(neuron.motif(i)) = Inhibitory_Effect(i) + lambdahat(neuron.inhibitory(i))*0.00025;
+    Inhibitory_Effect(neuron.motif(i)) = Inhibitory_Effect(i) + lambdahat(neuron.inhibitory(i)).*(inhibitoryfactor/neuron.lambda(1));
 end
 
 % Applying Inhibition onto excitatory neurons

@@ -10,8 +10,8 @@ theta_threshold = 45; % angle difference threshold - If the neuron axon is out o
 
 % Population Properties
 NumNeurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
-NumNeuronsMotif = 10; % # of neurons in each motif
-NumInhibitoryMotif = 5; % # of inhibitory neurons in motif
+NumNeuronsMotif = 5; % # of neurons in each motif
+NumInhibitoryMotif = 1; % # of inhibitory neurons in motif
 NumMotifs = NumNeurons/NumNeuronsMotif; % # Neuron in Motif.
 Inhibitory_Oscillatory_Percentage = .33; % Percentage of inhibitory neurons which oscillate
 NeuronMotionRatio = 0.2; % Ratio of Motion Neurons to non-motion neurons. based on population of excitatory neurons
@@ -33,8 +33,8 @@ NumSteps = 1/dt;
 
 %% Neuron Definitions
 
-count = ones(1,NumNeuronsMotif);
-neuron.type = repmat([1,2,2,2,2],1,NumMotifs); % Defines what type of neuron this number is. Inhibitory =1, Excitatory = 2
+count = ones(1,NumNeuronsMotif); count(NumInhibitoryMotif+1:end) = 2;
+neuron.type = repmat([count],1,NumMotifs); % Defines what type of neuron this number is. Inhibitory =1, Excitatory = 2
 neuron.motif = repmat(1:1:NumMotifs,NumNeuronsMotif,1); neuron.motif = neuron.motif(:)'; % Defines which motif the neuron belongs to
 neuron.inhibitory = find(neuron.type == 1); % Array with all inhibitory neurons
 neuron.excitatory = find(neuron.type == 2); % Array with all Excitatory neurons
@@ -299,7 +299,7 @@ electrode.x = electrode.x(:); electrode.y = electrode.y(:);
 
 % Now we must determine how far each square is to each electrode for later
 % intergrating.
-load('lightspread.mat');
+
 Stim_Distance_Map = zeros(length(electrode.x),sx,sy);
 for i = 1:length(electrode.x)
     Stim_Loc =  zeros(sx, sy); % Location of stimulus
@@ -310,7 +310,7 @@ for i = 1:length(electrode.x)
 end
 
 %% Neuron And Axon Area Summation
-
+load('lightspread.mat');
 neuron.io.soma = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Somas
 neuron.io.axon = zeros(NumNeurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
 neuron.oo.soma = zeros(NumNeurons,length(electrode.x)); % Stores light stimulus area summation component of Somas
