@@ -166,7 +166,7 @@ for kkk = 1:2
     end
 end
 if calctype == 1
-    save('solrb1.mat','solrb1','I0','h','numrepeats','ElectrodeNo');
+    save('solrb1.mat','solrb','I0','h','numrepeats','ElectrodeNo');
 else
     save('solrb2.mat','solrb2','I0','h','numrepeats','ElectrodeNo');
 end
