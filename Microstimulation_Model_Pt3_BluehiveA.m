@@ -31,23 +31,24 @@ neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 NumTrials = 100;
 inhibitoryfactor = [0.01 0.03 0.1 0.125 0.15 0.2]; % at rate = 40hz (for inhibitory), there is a X% inhibition factor active. This increases linearly with lambda.
+%inhibitoryfactor = [0.01 0.005 0.001 0.0005];
 y = 20 - (20).*(1:100).*inhibitoryfactor(1)./(40); % plot of lambda excitatory vs lambda inhibitory (In units lambda), given a stable excitatory firing hz = 20
 neuron.lambdamod(neuron.type == 1) = 40;
-neuron.lambdamod(neuron.type == 2) = neuron.lambda(2) - neuron.lambda(1)*(neuron.lambda(1).*(inhibitoryfactor/40));
+neuron.lambdamod(neuron.type == 2) = neuron.lambda(2) - neuron.lambda(1)*(neuron.lambda(1).*(inhibitoryfactor(1)/40));
 NumInhibitoryMotif = 2; % Number of inhibitory neurons, if calctype = 2
 
 
 %% Loop Start
 h = 100; % Step size
 I0 = 0:h:100000;  % Current Steps
-numrepeats = 6; % Number of overall repeats
+numrepeats = 100; % Number of overall repeats
 ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
 ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
 kk = 1;
 
 for kkk = 1:2
     lambdatype = kkk;
-    for kk = 1:length(neuron.inhibitoryfactor)
+    for kk = 1:length(inhibitoryfactor)
         
         if calctype == 2
             load('InitialConditionsFullB.mat');
@@ -66,6 +67,9 @@ for kkk = 1:2
             neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
             neuron.inhibitory = find(neuron.type == 1); % New Inhibitory List
             neuron.excitatory = find(neuron.type == 2);
+            neuron.lambdamod(neuron.type == 1) = 40;
+            neuron.lambdamod(neuron.type == 2) = neuron.lambda(2) - neuron.lambda(1)*(neuron.lambda(1).*(inhibitoryfactor(1)/40));
+
         end
         
         Neuron_RB = NaN(numrepeats,NumNeurons); % Rhoebase for every neuron, stored as I0 which causes neuron.lambda+1 spike
@@ -80,7 +84,7 @@ for kkk = 1:2
                 Ir_Neurons = neuron.oo.soma(:,ElectrodeNo).*I0(ii); % Summation of current directly from stimulus. AU irridance
                 
                 % Calculate neuron.lambda Change for poisson process
-                [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Ir_Neurons,neuron.inhibitoryfactor(kk),lambdatype);
+                [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Ir_Neurons,inhibitoryfactor(kk),lambdatype);
                 
                 % Finding RB for each neuron
                 
