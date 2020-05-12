@@ -1,5 +1,5 @@
 clearvars; clc
-load('spreadata.mat')
+load('OpticalSpreaData.mat')
 
 h = 1; % Angle step
 angles = 0:h:360-h; % Range of angles

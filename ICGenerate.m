@@ -1,4 +1,4 @@
-clear all; clc;
+clearvars; clc;
 
 %% Initial Condition Parameters
 
@@ -10,8 +10,8 @@ theta_threshold = 45; % angle difference threshold - If the neuron axon is out o
 
 % Population Properties
 NumNeurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
-NumNeuronsMotif = 5; % # of neurons in each motif
-NumInhibitoryMotif = 1; % # of inhibitory neurons in motif
+NumNeuronsMotif = 10; % # of neurons in each motif
+NumInhibitoryMotif = 5; % # of inhibitory neurons in motif
 NumMotifs = NumNeurons/NumNeuronsMotif; % # Neuron in Motif.
 Inhibitory_Oscillatory_Percentage = .33; % Percentage of inhibitory neurons which oscillate
 NeuronMotionRatio = 0.2; % Ratio of Motion Neurons to non-motion neurons. based on population of excitatory neurons
@@ -319,11 +319,13 @@ for i = 1:NumNeurons
 
     for j = 1:length(electrode.x)
         
-        neuron.io.axon(i,j) = sum(sum(1./(Stim_Distance_Map(j,neuron.indices(i).axon).^2))); % sums all inhibitory axon current feedback
+        neuron.io.axon(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.indices(i).axon).^2)); % Summation 1/r^2 area component of axon
         neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.indices(i).soma).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
+        
         lightspread.calc = lightspread.averaged.a.*exp(lightspread.averaged.b.*Stim_Distance_Map(j,neuron.indices(i).soma)); % Light Intensity Calculation
-        lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
+        % lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
         neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
+        
     end
     
 end
@@ -430,4 +432,4 @@ end
 %% Cleaning output
 
 clear ('Stim_Distance_Map','rp','rp_x','rp_y','Stim_Distance','Stim_Loc','PadSize','Neuron_points_Matrix','Ed');
-save InitialConditionsFull.mat;
+save InitialConditionsFullB.mat;

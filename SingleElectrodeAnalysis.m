@@ -4,10 +4,10 @@ set(0,'defaultAxesFontSize',14)
 set(0,'defaultAxesLineWidth',3)
 
 load('InitialConditionsFull.mat')
-load('solrb1.mat');
-load('solrb2.mat');
+load('solrb50.mat');
+%load('solrb2.mat');
 %Neuron_RB = solrb.o1;
-%Neuron_RB = solrb.e1;
+Neuron_RB = solrb.e1;
 %% Calculations
 
 for i = 1:NumMotifs
@@ -32,11 +32,10 @@ for i = 1:NumNeurons
 end
 %% Plots Neuron RB Vs Current
 
-currentstop = 100000;
 stepsol.current.all = zeros(numrepeats,length(I0)); % Calculates the number of neurons excited at every step of current
 stepsol.current.excitatory = stepsol.current.all; stepsol.current.inhibitory = stepsol.current.all; stepsol.current.motion = stepsol.current.all; stepsol.current.nonmotion = stepsol.current.all;
 for i = 1:length(I0)
-    stepsol.current.all(:,i) = sum(Neuron_RB                          <=I0(i),2)*100/NumNeurons;
+    stepsol.current.all(:,i) = sum(solrb.e1                          <=I0(i),2)*100/NumNeurons;
     stepsol.current.excitatory(:,i) = sum(solrb.e1(:,neuron.excitatory)     <=I0(i),2)*100/length(neuron.excitatory);
     stepsol.current.inhibitory(:,i) = sum(solrb.e1(:,neuron.inhibitory)     <=I0(i),2)*100/length(neuron.inhibitory);
     stepsol.current.motion(:,i) = sum(solrb.e1(:,neuron.motion.number)    <=I0(i),2)*100/length(neuron.motion.number);
@@ -56,6 +55,8 @@ options.line_width = 2;
 options.error = 'c95';
 options.legendswitch = 0; % Legend 0 = off, 1 = on
 options.legend = [];
+%%
+currentstop = 30000;
 
 options.handle     = figure; set(gcf,'Position',[100 100 800 700]);
 options.color_area = [0 128 0]./255; % Green : All Neurons
@@ -132,19 +133,36 @@ ylim([0 100]);
 xlim([0 currentstop/h]);
 hold off
 
-%% Comparing electrical vs optical
-
+%% Current Vs Optogenetics 1
 options.handle     = figure; set(gcf,'Position',[100 100 800 700]);
+title('Neuron Activation Through Center Electrode');
 options.color_area = [0 128 0]./255; % Green : All Neurons
 plot_areaerrorbar(stepsol.current.all,options);
+xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt); 
+
+hold on
+ax1 = gca; % current axes
+ax1.XColor = options.color_area;
+ax1.YColor = options.color_area;
+ax1_pos = ax1.Position; % position of first axes
+xlabel('Current Stimulus AU'); ylabel('Percentage Activated Neurons');
+legend('','MS');
+ax2 = axes('Position',ax1_pos,...
+    'XAxisLocation','top',...
+    'YAxisLocation','right',...
+    'Color','none');
+xlabel('Opto Stimulus AU'); ylabel('Percentage Activated Neurons');
 hold on;
-options.color_area = [128 255 128]./255; % Green : All Neurons
+
+options.color_area = [110 38 158]./255; % Green : All Neurons
 plot_areaerrorbar(stepsol.opto.all,options);
-xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt*h); title('Neuron Activation Through Center Electrode'); xlabel('Center Electrode Stimulus AU'); ylabel('Percentage Activated Neurons');
-ylim([0 100]);
-xlim([0 currentstop/h]);
+ax2.XColor = options.color_area;
+ax2.YColor = options.color_area;
+xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt); 
+legend('','Opto');
 hold off
 
+%%
 options.handle     = figure; set(gcf,'Position',[100 100 800 700]);
 options.color_area = [0 0 153]./255; % Blue : Excitatory
 plot_areaerrorbar(stepsol.current.excitatory,options);
@@ -157,7 +175,7 @@ plot_areaerrorbar(stepsol.opto.excitatory,options);
 hold on
 options.color_area = [255 77 77]./255; % Red : Inhibitory
 plot_areaerrorbar(stepsol.opto.inhibitory,options); 
-xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt*h); 
+%xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt*h); 
 title('Excitatory / Inhibitory Activation Through Center Electrode'); xlabel('Center Electrode Stimulus AU'); ylabel('Percentage Activated Neurons');
 legend('','MS Excitatory','','MS Inhibitory','','Opto Excitatory','','Opto Inhibitory'); 
 ylim([0 100]);
@@ -169,13 +187,18 @@ options.handle     = figure; set(gcf,'Position',[100 100 800 700]);
 options.color_area = [0 51 0]./255; % Green : Motion
 plot_areaerrorbar(stepsol.current.motion,options);
 hold on
-options.color_area = [255 165 0]./255; % Orange : Non-Motion
+options.color_area = [179 119 0]./255; % Orange : Non-Motion
 plot_areaerrorbar(stepsol.current.nonmotion,options);
 hold on
-options.color_area = [255 165 0]./255; % Orange : Non-Motion
-plot_areaerrorbar(stepsol.current.nonmotion,options);
-title('Motion Activation Through Center Electrode'); xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt*h); xlabel('Center Electrode Stimulus AU'); ylabel('Percentage Activated Neurons'); 
-legend('','Motion','','Non-Motion','','Opto Motion','','Opto Non-Motion');
+options.color_area = [128 255 128]./255; % Green : Motion
+plot_areaerrorbar(stepsol.opto.motion,options);
+hold on
+options.color_area = [255 217 179]./255; % Orange : Non-Motion
+plot_areaerrorbar(stepsol.opto.nonmotion,options);
+title('Motion Activation Through Center Electrode'); 
+%xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt*h); 
+xlabel('Center Electrode Stimulus AU'); ylabel('Percentage Activated Neurons'); 
+legend('','MS Motion','','MS Non-Motion','','Opto Motion','','Opto Non-Motion');
 ylim([0 100]);
 xlim([0 currentstop/h]);
 disp((find(mean(stepsol.current.motion) >= 50,1)-(find(mean(stepsol.current.nonmotion) >= 50,1)))*50)
