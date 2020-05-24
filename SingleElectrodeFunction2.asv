@@ -26,7 +26,7 @@ end
 
 % Parameters
 bpct = 05; % Bottom Percentile for Rheobase calculation. 50 for 50%, 05 for 95% CI.
-NumTrials = 50; % Number of trials per poisson process
+NumTrials = 100; % Number of trials per poisson process
 simulation = 2000; % Number of overall repeats for monte carle simulation
 neuron.lambda = zeros(1,NumNeurons);
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
@@ -61,9 +61,8 @@ for i = 1:length(units)
     
     % Finding RB for each neuron
     for ii = 1:NumNeurons
-        output(i,ii,:) = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct);
+        output(i,ii,iii) = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct);
     end
-    
 end
 
 
