@@ -49,23 +49,33 @@ end
 units = linspace(0,units50,h*.8);  % Current OR liminous intensity Steps
 units = [units linspace(units50+unitsmax*.2*h,unitsmax,h*.2)];
 
-output = NaN(h,NumNeurons,simulation); % Logical matrix denoting sucess (1) or failure (0) to spike in any given trial
+output = NaN(100,h,NumNeurons,simulation); % Stores poisson spike rate for every output
 
-for i = 1:length(units)
+parfor j = 1:100 % Iterate every electrode
+    output1 = NaN(h,NumNeurons,simulation);
+    ElectrodeNo = j;
+    DistanceNeurons = sqrt((electrode.x(j)-neuron.x).^2 + (electrode.y(j) - neuron.y).^2); % Calculate distance of every neuron to this electrode
+    DistanceNeurons = DistanceNeurons <= median(DistanceNeurons); % Find if the neuron is within the closest 50% of all neurons to this electrode
     
-    Ie_Neurons = neuron.io.soma(:,ElectrodeNo).*neuron.dirmult(:,ElectrodeNo).*units(i) + neuron.io.axon(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus + backpropogated up by axons. AU Current
-    Il_Neurons = neuron.oo.soma(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus. AU luminous intensity
-    
-    % Calculate neuron.lambda Change for poisson process
-    [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,inhibitoryfactor,lambdatype);
-    
-    % Finding RB for each neuron
-    for ii = 1:NumNeurons
-        output(i,ii,:) = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct);
+    for i = 1:length(units)
+        
+        Ie_Neurons = neuron.io.soma(:,ElectrodeNo).*neuron.dirmult(:,ElectrodeNo).*units(i) + neuron.io.axon(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus + backpropogated up by axons. AU Current
+        Il_Neurons = neuron.oo.soma(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus. AU luminous intensity
+        
+        % Calculate neuron.lambda Change for poisson process
+        [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,inhibitoryfactor,lambdatype);
+        
+        % Calculate Poisson spike rates for each neuron
+        for ii = 1:NumNeurons
+            if DistanceNeurons(ii) == 1
+                output1(i,ii,:) = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct); % Calculate Lambda
+            end
+        end
+        
     end
     
+    output(j,:,:,:) = output1; % Output result for this parfor loop
+    disp(['Electrode ' num2str(j) ' done']);
 end
 
-
-
-
+save('SEoutput.mat','output'); % Single electrode results output
