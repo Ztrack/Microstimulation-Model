@@ -78,4 +78,4 @@ parfor j = 1:100 % Iterate every electrode
     disp(['Electrode ' num2str(j) ' done']);
 end
 
-save('SEoutput.mat','output'); % Single electrode results output
+save('SEoutput.mat','output','-v7.3'); % Single electrode results output
