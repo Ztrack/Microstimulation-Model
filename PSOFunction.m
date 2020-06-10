@@ -1,16 +1,3 @@
-%
-% Copyright (c) 2016, Yarpiz (www.yarpiz.com)
-% All rights reserved. Please read the "license.txt" for license terms.
-%
-% Project Code: YTEA101
-% Project Title: Particle Swarm Optimization Video Tutorial
-% Publisher: Yarpiz (www.yarpiz.com)
-% 
-% Developer and Instructor: S. Mostapha Kalami Heris (Member of Yarpiz Team)
-% 
-% Contact Info: sm.kalami@gmail.com, info@yarpiz.com
-%
-
 function out = PSOFunction(problem, params)
 
     %% Problem Definiton
@@ -64,15 +51,15 @@ function out = PSOFunction(problem, params)
 
         % Generate Random Solution
         particle(i).Position = unifrnd(VarMin, VarMax, VarSize);
-
+        
         % Initialize Velocity
         particle(i).Velocity = zeros(VarSize);
 
         % Evaluation
-        particle(i).Cost = CostFunction(particle(i).Position);
+        particle(i).Cost = CostFunction(particle(i).Position); % Puts particle positions (electrode AU) through cost function
 
         % Update the Personal Best
-        particle(i).Best.Position = particle(i).Position;
+        particle(i).Best.Position = particle(i).Position; 
         particle(i).Best.Cost = particle(i).Cost;
 
         % Update Global Best

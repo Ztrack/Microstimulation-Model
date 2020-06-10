@@ -9,7 +9,7 @@ calctype = 1; % If 1, this is the standard 4:1 ratio. if 2, this is a 5:X ratio 
 Motion_Axon = 0; % if set =1, enabled, connections between relevant motion neurons is established
 Oscillatory_Behavior = 1; % is set =1, .33 of all inhibitory neurons will use Oscillatory poisson function
 Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
-lambdatype = 1; % What type of calcultion stimulus is presented. 1= current, 2 = opsin
+lambdatype = 2; % What type of calcultion stimulus is presented. 1= current, 2 = opsin
 
 % Apply Features
 if calctype == 1 %load initial condition
@@ -38,16 +38,23 @@ ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
 ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
 
 %% Loop Start
-h = 50; % number of steps for current/LI
+h = 10; % number of steps for current/LI
+% if lambdatype == 1
+%     unitsmax = 30000; % Point at which 100% of neurons are activated
+%     units50 = 10000; % Point at which 50% of neurons are activated
+% else
+%     unitsmax = 100000;
+%     units50 = 30000; 
+% end
+% units = linspace(0,units50,h*.8);  % Current OR liminous intensity Steps
+% units = [units linspace(units50+unitsmax*.2*h,unitsmax,h*.2)];
+
 if lambdatype == 1
-    unitsmax = 30000; % Point at which 100% of neurons are activated
-    units50 = 10000; % Point at which 50% of neurons are activated
+    unitsmax = 1250; 
 else
-    unitsmax = 100000;
-    units50 = 30000; 
+    unitsmax = 1500; 
 end
-units = linspace(0,units50,h*.8);  % Current OR liminous intensity Steps
-units = [units linspace(units50+unitsmax*.2*h,unitsmax,h*.2)];
+units = linspace(0,unitsmax,h); 
 
 output = NaN(100,h,NumNeurons,simulation); % Stores poisson spike rate for every output
 

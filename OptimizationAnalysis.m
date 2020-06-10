@@ -1,6 +1,6 @@
 clc; clear; close all;
 load('InitialConditionsFull.mat');
-
+load('threshold.mat');
 %% Microstimulation + Optogenetics Optomization
 
 neuron.inhibitoryfactor = 0.01;
@@ -11,19 +11,31 @@ neuron.threshold.fs = 41.0; % % Value determined experimentally
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 
+h = 50; % number of steps for current/LI
+unitsmax(1) = 30000; % Point at which 100% of neurons are activated
+units50(1) = 10000; % Point at which 50% of neurons are activated
+unitsmax(2) = 100000;
+units50(2) = 30000; 
+
+u1 = linspace(0,units50(1),h*.8);  % Current OR liminous intensity Steps
+u2 = linspace(0,units50(2),h*.8);
+u1 = [u1 linspace(units50(1)+unitsmax(1)*.2*h,unitsmax(1),h*.2)];
+u2 = [u2 linspace(units50(2)+unitsmax(2)*.2*h,unitsmax(2),h*.2)];
+
 % lambdatype:
-% 1 = MS + Optogenetics (all silencing),
-% 2 = MS + Optogenetics (Inhibitory neuron excitation, only)
-% 3 = MS + Optogenetics (Inhibitory neuron excitation, excitatory silencing)
-lambdatype = 3;
+lambdatype = 1; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
 
 
-% Problem Definiton
+%% Problem Definiton
 
 problem.CostFunction = @(x) MotionRatioCombined(x,NumNeurons,neuron,lambdatype); % Cost
 problem.nVar = 200;       % Number of Unknown (Decision) Variables
-problem.VarMin =  0;  % Lower Bound of Decision Variables
-problem.VarMax =  1000;   % Upper Bound of Decision Variables
+problem.VarMin =  [threshold.c-1.*1250 threshold.o-1.*1500];
+problem.VarMin(problem.VarMin < 0) = 0; % Fix non-zeros
+problem.VarMax =  [threshold.c .*1250 threshold.o .*100];   % Upper Bound of Decision Variables
+
+%problem.VarMin =  [0:99 15000:15099];  % TEST VARIABLES - 0
+%problem.VarMax =  [1000:1099 15000:15099]; % TEST VARIABLES
 
 % Parameters of PSO
 params.MaxIt = 50;        % Maximum Number of Iterations
@@ -34,56 +46,33 @@ params.w = 1;               % Intertia Coefficient
 params.wdamp = .99;        % Damping Ratio of Inertia Coefficient
 params.c1 = 5;              % Personal Acceleration Coefficient
 params.c2 = 5;              % Social Acceleration Coefficient
-params.ShowIterInfo = false; % Flag for Showing Iteration Informatin
+params.ShowIterInfo = true; % Flag for Showing Iteration Informatin
 
-%% Calling PSO - Single
 
-% out = PSOFunction(problem, params);
-% 
-% BestSol = out.BestSol;
-% BestCosts = out.BestCosts;
-% BestIt = out.NumIt;
-% 
-% figure;
-% plot(BestCosts, 'LineWidth', 2);
-% semilogy(BestCosts, 'LineWidth', 2);
-% xlabel('Iteration Number');
-% ylabel('Non-Motion / Motion Neuron Ratio');
-% title('Optimization Performance');
-% grid on;
+%% Calling PSO
 
-%% Calling PSO - Iterative
-it = 1000:1000:30000;
-numrepeats = 30;
+numrepeats = 100;
+BestCost = inf;
 
 for ii = 1:numrepeats
-for i = 1:length(it)
-    params.nPop = it(i);
-    out = PSOFunction(problem, params);
-    Iterative.Costs(ii,i) = out.BestSol.Cost;
-    %BestIt = out.NumIt;
+    out = PSOFunction2(problem, params);
     
-    if Iterative.Costs(ii,i) == min(Iterative.Costs)
-        Iterative.BestCost = Iterative.Costs(i);
-        Iterative.BestSolPos = out.BestSol.Position;
+    if out.BestSol.Cost < BestCost
+        BestCost = out.BestSol.Cost;
+        BestPos = out.BestSol.Position;
+        CostsCurve = out.BestCosts;
     end
 end
-end
 
+figure;
+plot(CostsCurve, 'LineWidth', 2);
+semilogy(CostsCurve, 'LineWidth', 2);
+xlabel('Iteration Number');
+ylabel('Non-Motion / Motion Neuron Ratio');
+title('Optimization Performance');
+grid on;
 
-% load('Iterative1.mat'); load('Iterative2.mat'); load('Iterative3.mat');
-% numit = 20;
-% Costs(1,1:numit) = Iterative1.Costs(1:numit);
-% Costs(2,1:numit) = Iterative2.Costs(1:numit);
-% Costs(3,1:numit) = Iterative3.Costs(1:numit);
-% y = mean(Costs);
-% ystd = std(Costs);
-% err = (ystd./sqrt(size(Costs,1))).*1.96;
-% figure; errorbar((1:20)*1000,y,err); title('Number Solutions Affects Optimization Performance'); xlabel('Number Solutions'); ylabel('Optimization Performance');
-% 
-% figure; plot((1:30)*1000,Iterative3.Costs(1:30));
-
-
+save optimize.mat;
 %% Functions
 function z = MotionRatioCombined(x,NumNeurons,neuron,lambdatype) % Cost
 % z = solution to be minimzied
