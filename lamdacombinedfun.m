@@ -1,9 +1,9 @@
-function [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Ir_Neurons,inhibitoryfactor,lambdatype)
+function [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,inhibitoryfactor,lambdatype)
 
 % lambdatype:
 % 1 = MS only
 % 2 = opto only
-% 3 = MS + Optogenetics (all excitatory - affects all cells
+% 3 = MS + Optogenetics (all excitatory - affects all cells)
 % indiscriminately)
 % 4 = MS + Optogenetics (all silencing - affects all cells indiscriminately),
 % 5 = MS + Optogenetics (only express excitatory opsin in inhibitory neurons)
@@ -11,27 +11,32 @@ function [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Ir_Neurons,inhibitoryf
 % 7 = MS + Optogenetics (Express excitatory opsin in excitatory cells +
 % express inhibitory opsin in all cells indiscriminately)
 
+[frc,fro] = fifun(Ie_Neurons,Il_Neurons); % FR current, FR opto
 % Calculating Lambda hat based off microstimulation
 if lambdatype == 1
-    lambdahat = neuron.lambda + neuron.lambda.*Ie_Neurons'; % MS only
+    lambdahat = neuron.lambda + frc; % MS only
 elseif lambdatype == 2
-    lambdahat = neuron.lambda + neuron.lambda.*Ir_Neurons'; % Opto only excitation
+    lambdahat = neuron.lambda + fro; % Opto only excitation
 elseif lambdatype == 3
-    lambdahat = neuron.lambda + neuron.lambda.*(Ie_Neurons' + Ir_Neurons'); % MS + opto for all
+    lambdahat = neuron.lambda + frc + fro; % MS + opto for all
 elseif lambdatype == 4
-    lambdahat = neuron.lambda + neuron.lambda.*(Ie_Neurons' - Ir_Neurons'); % MS - opto for all
+    lambdahat = neuron.lambda + frc - fro; % MS - opto for all
 elseif lambdatype == 5
-    lambdahat = neuron.lambda + neuron.lambda.*Ie_Neurons'; % MS 
-    lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + Ir_Neurons(neuron.inhibitory)'; % Optogenetics excitatory opsin for inhibitory
+    lambdahat = neuron.lambda + frc; % MS 
+    lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + fro(neuron.inhibitory); % Optogenetics excitatory opsin for inhibitory
 elseif lambdatype == 6
-    lambdahat = neuron.lambda + neuron.lambda.*Ie_Neurons'; % MS
-    lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + Ir_Neurons(neuron.inhibitory)'; % Optogenetics excitatory opsin for inhibitory
-    lambdahat(neuron.excitatory) = lambdahat(neuron.excitatory) - Ir_Neurons(neuron.excitatory)'; % Optogenetics inhibitory opsin for excitatory
+    lambdahat = neuron.lambda + frc; % MS
+    lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + fro(neuron.inhibitory); % Optogenetics excitatory opsin for inhibitory
+    lambdahat(neuron.excitatory) = lambdahat(neuron.excitatory) - fro(neuron.excitatory); % Optogenetics inhibitory opsin for excitatory
 elseif lambdatype == 7
-    lambdahat = neuron.lambda + neuron.lambda.*Ie_Neurons'; % MS
-    lambdahat = lambdahat - Ir_Neurons'; % Inhibitory opsin in all cells
-    lambdahat(neuron.excitatory) = lambdahat(neuron.excitatory) + Ir_Neurons(neuron.excitatory)'; % Excitatory opsin in excitatory neurons
+    lambdahat = neuron.lambda + frc; % MS
+    lambdahat = lambdahat - fro; % Inhibitory opsin in all cells
+    lambdahat(neuron.excitatory) = lambdahat(neuron.excitatory) + fro(neuron.excitatory); % Excitatory opsin in excitatory neurons
 end
+
+% Ensuring a firing rate limit is applied
+limit = 300;
+lambdahat(lambdahat>limit) = limit;
 
 % Calculating Inhibition effect on each motif. Rate-based calculation
 % Effect = summation of (new-old)*factor for each inhibitory in motif

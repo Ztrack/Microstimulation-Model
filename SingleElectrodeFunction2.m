@@ -9,7 +9,7 @@ calctype = 1; % If 1, this is the standard 4:1 ratio. if 2, this is a 5:X ratio 
 Motion_Axon = 0; % if set =1, enabled, connections between relevant motion neurons is established
 Oscillatory_Behavior = 1; % is set =1, .33 of all inhibitory neurons will use Oscillatory poisson function
 Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
-lambdatype = 2; % What type of calcultion stimulus is presented. 1= current, 2 = opsin
+lambdatype = 1; % What type of calcultion stimulus is presented. 1= current, 2 = opsin
 
 % Apply Features
 if calctype == 1 %load initial condition
@@ -28,17 +28,14 @@ end
 bpct = 05; % Bottom Percentile for Rheobase calculation. 50 for 50%, 05 for 95% CI.
 NumTrials = 50; % Number of trials per poisson process
 simulation = 2000; % Number of overall repeats for monte carle simulation
-neuron.lambda = zeros(1,NumNeurons);
+neuron.lambda = zeros(NumNeurons,1);
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 inhibitoryfactor = 0.01; % at rate = 40hz (for inhibitory), there is a X% inhibition factor active. This increases linearly with lambda.
-neuron.lambdamod(neuron.type == 1) = 40;
-neuron.lambdamod(neuron.type == 2) = neuron.lambda(2) - neuron.lambda(1)*(neuron.lambda(1).*(inhibitoryfactor(1)/40));
-ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
-ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
 
 %% Loop Start
-h = 10; % number of steps for current/LI
+h = 50; % number of steps for current/LI
+
 % if lambdatype == 1
 %     unitsmax = 30000; % Point at which 100% of neurons are activated
 %     units50 = 10000; % Point at which 50% of neurons are activated
@@ -50,16 +47,18 @@ h = 10; % number of steps for current/LI
 % units = [units linspace(units50+unitsmax*.2*h,unitsmax,h*.2)];
 
 if lambdatype == 1
-    unitsmax = 1250; 
+    unitsmin = 1;
+    unitsmax = 200; 
 else
-    unitsmax = 1500; 
+    unitsmin = .0001;
+    unitsmax = .001; 
 end
-units = linspace(0,unitsmax,h); 
+units = linspace(unitsmin,unitsmax,h); 
 
-output = NaN(100,h,NumNeurons,simulation); % Stores poisson spike rate for every output
+output = zeros(100,h,NumNeurons,1); % Stores poisson spike rate for every output
 
 parfor j = 1:100 % Iterate every electrode
-    output1 = NaN(h,NumNeurons,simulation);
+    output1 = zeros(h,NumNeurons,1);
     ElectrodeNo = j;
     DistanceNeurons = sqrt((electrode.x(j)-neuron.x).^2 + (electrode.y(j) - neuron.y).^2); % Calculate distance of every neuron to this electrode
     DistanceNeurons = DistanceNeurons <= median(DistanceNeurons); % Find if the neuron is within the closest 50% of all neurons to this electrode
@@ -75,7 +74,8 @@ parfor j = 1:100 % Iterate every electrode
         % Calculate Poisson spike rates for each neuron
         for ii = 1:NumNeurons
             if DistanceNeurons(ii) == 1
-                output1(i,ii,:) = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct); % Calculate Lambda
+                y = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct); % Calculate Lambda
+                output1(i,ii) = sum(y > neuron.lambda(ii)+1) >= simulation.*.50;
             end
         end
         

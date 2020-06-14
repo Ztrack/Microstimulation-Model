@@ -5,8 +5,8 @@ set(0,'defaultAxesLineWidth',3)
 
 load('InitialConditionsFull.mat')
 load('solrb1.mat');
-%Neuron_RB = solrb.o1;
-Neuron_RB = solrb.e1;
+Neuron_RB = solrb.o1;
+%Neuron_RB = solrb.e1;
 %% Calculations
 
 for i = 1:NumMotifs
@@ -54,7 +54,7 @@ options.error = 'c95';
 options.legendswitch = 0; % Legend 0 = off, 1 = on
 options.legend = [];
 %%
-currentstop = 25000;
+currentstop = 1;
 
 options.handle     = figure; set(gcf,'Position',[000 000 800 700]);
 options.color_area = [0 128 0]./255; % Green : All Neurons
@@ -260,7 +260,7 @@ hold off;
 
 
 
-%% Box plots for mean & PCT M3 Neurons
+%% Bar plots for mean & PCT M3 Neurons
 
 pct = [NaN,25,100];
 for i = 1:5

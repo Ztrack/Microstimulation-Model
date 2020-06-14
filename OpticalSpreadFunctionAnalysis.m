@@ -7,6 +7,7 @@ origin = find(spreadata==max(max(spreadata))); % Origin indices
 [y1,x1] = ind2sub([size(spreadata)],origin);  % Origin x,y
 dataradii = length(spreadata)-max(x1,y1);
 spreadata = spreadata(y1-dataradii:y1+dataradii,x1-dataradii:x1+dataradii); % Center data around origin
+spreadata = spreadata./max(spreadata);
 k = 1;
 for i = 1:4
 
@@ -118,7 +119,7 @@ ylabel('Relative Light Intensity');
 Stim_Loc = zeros(500,500);
 Stim_Loc(250,250) = 1;
 Ed = bwdist(Stim_Loc); Ed(250,250) = 1;
-Stim_int = lightspread.averaged.a.*Ed.^lightspread.averaged.b+lightspread.averaged.c;
+Stim_int = lightspread.averaged.a.*Ed.^lightspread.averaged.b;
 subplot(2,1,2); imagesc(Stim_int); colorbar; xlabel('um'); ylabel('um'); title('1mW Light Intensity Distribution');
 
 % Angle Specific
@@ -145,9 +146,9 @@ for i = 1:length(indata)
     [y2,x2] = ind2sub([size(Ed)],indata(i));
     theta = atan2d(y2-y1,x2-x1); % Angle from -180 to 180
     theta = round(mod(theta,360)); % Normalize angle & round to nearest
-    Stim_int(indata(i)) = lightspread.all.a(i).*Ed(indata(i)).^lightspread.all.b(i)+lightspread.all.c(i);
+    Stim_int(indata(i)) = lightspread.all.a(i).*Ed(indata(i)).^lightspread.all.b(i);
 end
-Stim_int = lightspread.averaged.a.*Ed.^lightspread.averaged.b+lightspread.averaged.c;
+Stim_int = lightspread.averaged.a.*Ed.^lightspread.averaged.b;
 subplot(2,1,2); imagesc(Stim_int); colorbar; xlabel('um'); ylabel('um'); title('1mW Light Intensity Distribution');
 
 % Electrical Stim Spread to compare
