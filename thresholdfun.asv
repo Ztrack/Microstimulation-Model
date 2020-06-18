@@ -18,7 +18,7 @@ for i = 1:size(output,1) % For every electrode
         numactivated(ii) = sum(output(i,ii,:)) > x;
     end
     
-    threshold.c(i) = units(find(numactivated == 1,1));
+    threshold.c(i) = find(numactivated == 1,1);
 end
 
 load('SEoutputo.mat');

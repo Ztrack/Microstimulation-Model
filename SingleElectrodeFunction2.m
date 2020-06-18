@@ -34,7 +34,7 @@ neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 inhibitoryfactor = 0.01; % at rate = 40hz (for inhibitory), there is a X% inhibition factor active. This increases linearly with lambda.
 
 %% Loop Start
-h = 50; % number of steps for current/LI
+h = 100; % number of steps for current/LI
 
 % if lambdatype == 1
 %     unitsmax = 30000; % Point at which 100% of neurons are activated
@@ -48,10 +48,10 @@ h = 50; % number of steps for current/LI
 
 if lambdatype == 1
     unitsmin = 1;
-    unitsmax = 200; 
+    unitsmax = 1000; 
 else
     unitsmin = .0001;
-    unitsmax = .001; 
+    unitsmax = .002; 
 end
 units = linspace(unitsmin,unitsmax,h); 
 
@@ -85,4 +85,4 @@ parfor j = 1:100 % Iterate every electrode
     disp(['Electrode ' num2str(j) ' done']);
 end
 
-save('SEoutput.mat','output','-v7.3'); % Single electrode results output
+save('SEoutput.mat','output','units','-v7.3'); % Single electrode results output

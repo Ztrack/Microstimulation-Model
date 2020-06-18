@@ -30,20 +30,20 @@ for i = 1:NumNeurons
     DistanceNeurons(i) = min(nonzeros(sqrt((neuron.x(i)-neuron.x).^2 + (neuron.y(i) - neuron.y).^2)));
 end
 
-stepsol.current.all = zeros(numrepeats,length(I0)); % Calculates the number of neurons excited at every step of current
+stepsol.current.all = zeros(numrepeats,length(solrb.e.I0)); % Calculates the number of neurons excited at every step of current
 stepsol.current.excitatory = stepsol.current.all; stepsol.current.inhibitory = stepsol.current.all; stepsol.current.motion = stepsol.current.all; stepsol.current.nonmotion = stepsol.current.all;
-for i = 1:length(I0)
-    stepsol.current.all(:,i) = sum(solrb.e1                          <=I0(i),2)*100/NumNeurons;
-    stepsol.current.excitatory(:,i) = sum(solrb.e1(:,neuron.excitatory)     <=I0(i),2)*100/length(neuron.excitatory);
-    stepsol.current.inhibitory(:,i) = sum(solrb.e1(:,neuron.inhibitory)     <=I0(i),2)*100/length(neuron.inhibitory);
-    stepsol.current.motion(:,i) = sum(solrb.e1(:,neuron.motion.number)    <=I0(i),2)*100/length(neuron.motion.number);
-    stepsol.current.nonmotion(:,i) = sum(solrb.e1(:,neuron.nonmotion.number) <=I0(i),2)*100/length(neuron.nonmotion.number);
+for i = 1:length(solrb.e.I0)
+    stepsol.current.all(:,i) = sum(solrb.e1                          <=solrb.e.I0(i),2)*100/NumNeurons;
+    stepsol.current.excitatory(:,i) = sum(solrb.e1(:,neuron.excitatory)     <=solrb.e.I0(i),2)*100/length(neuron.excitatory);
+    stepsol.current.inhibitory(:,i) = sum(solrb.e1(:,neuron.inhibitory)     <=solrb.e.I0(i),2)*100/length(neuron.inhibitory);
+    stepsol.current.motion(:,i) = sum(solrb.e1(:,neuron.motion.number)    <=solrb.e.I0(i),2)*100/length(neuron.motion.number);
+    stepsol.current.nonmotion(:,i) = sum(solrb.e1(:,neuron.nonmotion.number) <=solrb.e.I0(i),2)*100/length(neuron.nonmotion.number);
     
-    stepsol.opto.all(:,i) = sum(solrb.o1                          <=I0(i),2)*100/NumNeurons;
-    stepsol.opto.excitatory(:,i) = sum(solrb.o1(:,neuron.excitatory)     <=I0(i),2)*100/length(neuron.excitatory);
-    stepsol.opto.inhibitory(:,i) = sum(solrb.o1(:,neuron.inhibitory)     <=I0(i),2)*100/length(neuron.inhibitory);
-    stepsol.opto.motion(:,i) = sum(solrb.o1(:,neuron.motion.number)    <=I0(i),2)*100/length(neuron.motion.number);
-    stepsol.opto.nonmotion(:,i) = sum(solrb.o1(:,neuron.nonmotion.number) <=I0(i),2)*100/length(neuron.nonmotion.number);
+    stepsol.opto.all(:,i) = sum(solrb.o1                          <=solrb.o.I0(i),2)*100/NumNeurons;
+    stepsol.opto.excitatory(:,i) = sum(solrb.o1(:,neuron.excitatory)     <=solrb.o.I0(i),2)*100/length(neuron.excitatory);
+    stepsol.opto.inhibitory(:,i) = sum(solrb.o1(:,neuron.inhibitory)     <=solrb.o.I0(i),2)*100/length(neuron.inhibitory);
+    stepsol.opto.motion(:,i) = sum(solrb.o1(:,neuron.motion.number)    <=solrb.o.I0(i),2)*100/length(neuron.motion.number);
+    stepsol.opto.nonmotion(:,i) = sum(solrb.o1(:,neuron.nonmotion.number) <=solrb.o.I0(i),2)*100/length(neuron.nonmotion.number);
 end
 
 % Options for plotting
@@ -54,13 +54,13 @@ options.error = 'c95';
 options.legendswitch = 0; % Legend 0 = off, 1 = on
 options.legend = [];
 %%
-currentstop = 1;
+currentstop = 0;
 
 options.handle     = figure; set(gcf,'Position',[000 000 800 700]);
 options.color_area = [0 128 0]./255; % Green : All Neurons
 plot_areaerrorbar(stepsol.current.all,options); xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt*h); title('Neuron Activation Through Center Electrode'); xlabel('Center Electrode Current AU'); ylabel('Percentage Activated Neurons');
 ylim([0 100]);
-xlim([0 currentstop/h]);
+%xlim([0 currentstop/h]);
 hold off
 
 options.handle     = figure; set(gcf,'Position',[000 000 800 700]);
@@ -73,10 +73,10 @@ title('Excitatory / Inhibitory Activation Through Center Electrode'); xlabel('Ce
 xline(find(mean(stepsol.current.excitatory) >= 50,1),'color','blue'); xline(find(mean(stepsol.current.inhibitory) >= 50,1),'color','red'); 
 legend('','Excitatory','','Inhibitory','50% Excitatory','50% Inhibitory'); 
 ylim([0 100]);
-xlim([0 currentstop/h]);
+%xlim([0 currentstop/h]);
 disp((find(mean(stepsol.current.excitatory) >= 50,1)-(find(mean(stepsol.current.inhibitory) >= 50,1)))*50);
 hold off
-
+%%
 options.handle     = figure; set(gcf,'Position',[000 000 800 700]);
 options.color_area = [0 128 0]./255; % Green : Motion
 plot_areaerrorbar(stepsol.current.motion,options);
@@ -87,7 +87,7 @@ title('Motion Activation Through Center Electrode'); xt = get(gca, 'XTick'); set
 xline(find(mean(stepsol.current.motion) >= 50,1),'color',[0 128 0]./255); xline(find(mean(stepsol.current.nonmotion) >= 50,1),'color',[255 165 0]./255);
 legend('','Motion','','Non-Motion','50% Motion','50% Non-Motion');
 ylim([0 100]);
-xlim([0 currentstop/h]);
+%xlim([0 currentstop/h]);
 disp((find(mean(stepsol.current.motion) >= 50,1)-(find(mean(stepsol.current.nonmotion) >= 50,1)))*50)
 hold off
 
@@ -97,10 +97,10 @@ for i = 1:NumPads
     pad.numneurons(i) = sum(neuron.pad == i); % Sums number of neurons per pad
 end
 
-stepsol.current.pads = zeros(NumPads,numrepeats,length(I0)); % Calculates the number of neurons excited at every step of current
+stepsol.current.pads = zeros(NumPads,numrepeats,length(solrb.e.I0)); % Calculates the number of neurons excited at every step of current
 for j = 1:NumPads
-for i = 1:length(I0)
-    stepsol.current.pads(j,:,i) = sum(solrb.e1(:,neuron.pad == j)                          <=I0(i),2)*100/pad.numneurons(j);
+for i = 1:length(solrb.e.I0)
+    stepsol.current.pads(j,:,i) = sum(solrb.e1(:,neuron.pad == j)                          <=solrb.e.I0(i),2)*100/pad.numneurons(j);
 end
 end
 
@@ -128,23 +128,26 @@ options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerror
 title('Pad Activation Through Center Electrode'); xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt*h); xlabel('Center Electrode Current AU'); ylabel('Percentage Activated Neurons'); 
 legend('','Middle Pad','','1 Pad Away','','1.5 Pads Away','','2 Pads Away','','2.5 Pads Away');
 ylim([0 100]); 
-xlim([0 currentstop/h]);
+%xlim([0 currentstop/h]);
 hold off
 
 %% Current Vs Optogenetics 1
 options.handle     = figure; set(gcf,'Position',[000 000 800 700]);
 title('Neuron Activation Through Center Electrode');
 options.color_area = [0 128 0]./255; % Green : All Neurons
+options.x_axis = solrb.e.I0;
 plot_areaerrorbar(stepsol.current.all,options);
-xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt); 
+%xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt); 
 
 hold on
 ax1 = gca; % current axes
 ax1.XColor = options.color_area;
-ax1.YColor = options.color_area;
+ax1.YColor = [0 0 0];
 ax1_pos = ax1.Position; % position of first axes
 xlabel('Current Stimulus AU'); ylabel('Percentage Activated Neurons');
-legend('','MS');
+ylim([0 100]);
+%legend('','MS');
+
 ax2 = axes('Position',ax1_pos,...
     'XAxisLocation','top',...
     'YAxisLocation','right',...
@@ -153,11 +156,13 @@ xlabel('Opto Stimulus AU'); ylabel('Percentage Activated Neurons');
 hold on;
 
 options.color_area = [110 38 158]./255; % Green : All Neurons
+options.x_axis = solrb.o.I0*1000;
 plot_areaerrorbar(stepsol.opto.all,options);
 ax2.XColor = options.color_area;
-ax2.YColor = options.color_area;
+ax2.YColor = [0 0 0];
 xt = get(gca, 'XTick'); set(gca, 'XTick',xt, 'XTickLabel',xt); 
 legend('','Opto');
+ylim([0 100]);
 hold off
 
 %%
@@ -177,7 +182,7 @@ plot_areaerrorbar(stepsol.opto.inhibitory,options);
 title('Excitatory / Inhibitory Activation Through Center Electrode'); xlabel('Center Electrode Stimulus AU'); ylabel('Percentage Activated Neurons');
 legend('','MS Excitatory','','MS Inhibitory','','Opto Excitatory','','Opto Inhibitory'); 
 ylim([0 100]);
-xlim([0 currentstop/h]);
+%xlim([0 currentstop/h]);
 disp((find(mean(stepsol.current.excitatory) >= 50,1)-(find(mean(stepsol.current.inhibitory) >= 50,1)))*50);
 hold off
 
@@ -198,7 +203,7 @@ title('Motion Activation Through Center Electrode');
 xlabel('Center Electrode Stimulus AU'); ylabel('Percentage Activated Neurons'); 
 legend('','MS Motion','','MS Non-Motion','','Opto Motion','','Opto Non-Motion');
 ylim([0 100]);
-xlim([0 currentstop/h]);
+%xlim([0 currentstop/h]);
 disp((find(mean(stepsol.current.motion) >= 50,1)-(find(mean(stepsol.current.nonmotion) >= 50,1)))*50)
 hold off
 
@@ -425,16 +430,16 @@ options.error = 'c95';
 options.legendswitch = 0; % Legend 0 = off, 1 = on
 options.legend = [];
 
-stepsol.current.all = zeros(numrepeats,length(I0)); % Calculates the number of neurons excited at every step of current
+stepsol.current.all = zeros(numrepeats,length(solrb.e.I0)); % Calculates the number of neurons excited at every step of current
 stepsol.current.excitatory = stepsol.current.all; stepsol.current.inhibitory = stepsol.current.all; stepsol.current.motion = stepsol.current.all; stepsol.current.nonmotion = stepsol.current.all; Neuron_Excited_Per_Step6 = stepsol.current.all;
 
-for i = 1:length(I0)
-    stepsol.current.all(:,i) = sum(neuron.rb.a1(:,neuron.excitatory)     <=I0(i),2)*100/length(neuron.excitatory);
-    stepsol.current.excitatory(:,i) = sum(neuron.rb.a2(:,neuron.excitatory)     <=I0(i),2)*100/length(neuron.excitatory);
-    stepsol.current.inhibitory(:,i) = sum(neuron.rb.a3(:,neuron.excitatory)     <=I0(i),2)*100/length(neuron.excitatory);
-    stepsol.current.motion(:,i) = sum(neuron.rb.a4(:,neuron.excitatory)     <=I0(i),2)*100/length(neuron.excitatory);
-    stepsol.current.nonmotion(:,i) = sum(neuron.rb.a5(:,neuron.excitatory)     <=I0(i),2)*100/length(neuron.excitatory);
-    Neuron_Excited_Per_Step6(:,i) = sum(neuron.rb.a6(:,neuron.excitatory)     <=I0(i),2)*100/length(neuron.excitatory);
+for i = 1:length(solrb.e.I0)
+    stepsol.current.all(:,i) = sum(neuron.rb.a1(:,neuron.excitatory)     <=solrb.e.I0(i),2)*100/length(neuron.excitatory);
+    stepsol.current.excitatory(:,i) = sum(neuron.rb.a2(:,neuron.excitatory)     <=solrb.e.I0(i),2)*100/length(neuron.excitatory);
+    stepsol.current.inhibitory(:,i) = sum(neuron.rb.a3(:,neuron.excitatory)     <=solrb.e.I0(i),2)*100/length(neuron.excitatory);
+    stepsol.current.motion(:,i) = sum(neuron.rb.a4(:,neuron.excitatory)     <=solrb.e.I0(i),2)*100/length(neuron.excitatory);
+    stepsol.current.nonmotion(:,i) = sum(neuron.rb.a5(:,neuron.excitatory)     <=solrb.e.I0(i),2)*100/length(neuron.excitatory);
+    Neuron_Excited_Per_Step6(:,i) = sum(neuron.rb.a6(:,neuron.excitatory)     <=solrb.e.I0(i),2)*100/length(neuron.excitatory);
 end
 
 options.color_area = [255 0 0]./255;
@@ -485,16 +490,16 @@ options.error = 'c95';
 options.legendswitch = 0; % Legend 0 = off, 1 = on
 options.legend = [];
 
-stepsol.current.all = zeros(numrepeats,length(I0)); % Calculates the number of neurons excited at every step of current
+stepsol.current.all = zeros(numrepeats,length(solrb.e.I0)); % Calculates the number of neurons excited at every step of current
 stepsol.current.excitatory = stepsol.current.all; stepsol.current.inhibitory = stepsol.current.all; stepsol.current.motion = stepsol.current.all; stepsol.current.nonmotion = stepsol.current.all; Neuron_Excited_Per_Step6 = stepsol.current.all; Neuron_Excited_Per_Step7 = stepsol.current.all; Neuron_Excited_Per_Step8 = stepsol.current.all;
 
-for i = 1:length(I0)
-    %stepsol.current.all(:,i) = sum(Neuron_RBB0                           <=I0(i),2)*100/length(Neuron_RBB0);
-    stepsol.current.excitatory(:,i) = sum(neuron.rb.a1(:,neuron.excitatory1)     <=I0(i),2)*100/length(neuron.excitatory1);
-    stepsol.current.inhibitory(:,i) = sum(neuron.rb.a2(:,neuron.excitatory2)     <=I0(i),2)*100/length(neuron.excitatory2);
-    stepsol.current.motion(:,i) = sum(neuron.rb.a3(:,neuron.excitatory3)     <=I0(i),2)*100/length(neuron.excitatory3);
-    stepsol.current.nonmotion(:,i) = sum(neuron.rb.a4(:,neuron.excitatory4)     <=I0(i),2)*100/length(neuron.excitatory4);
-    Neuron_Excited_Per_Step6(:,i) = sum(neuron.rb.a5(:,neuron.excitatory5)     <=I0(i),2)*100/length(neuron.excitatory5);
+for i = 1:length(solrb.e.I0)
+    %stepsol.current.all(:,i) = sum(Neuron_RBB0                           <=solrb.e.I0(i),2)*100/length(Neuron_RBB0);
+    stepsol.current.excitatory(:,i) = sum(neuron.rb.a1(:,neuron.excitatory1)     <=solrb.e.I0(i),2)*100/length(neuron.excitatory1);
+    stepsol.current.inhibitory(:,i) = sum(neuron.rb.a2(:,neuron.excitatory2)     <=solrb.e.I0(i),2)*100/length(neuron.excitatory2);
+    stepsol.current.motion(:,i) = sum(neuron.rb.a3(:,neuron.excitatory3)     <=solrb.e.I0(i),2)*100/length(neuron.excitatory3);
+    stepsol.current.nonmotion(:,i) = sum(neuron.rb.a4(:,neuron.excitatory4)     <=solrb.e.I0(i),2)*100/length(neuron.excitatory4);
+    Neuron_Excited_Per_Step6(:,i) = sum(neuron.rb.a5(:,neuron.excitatory5)     <=solrb.e.I0(i),2)*100/length(neuron.excitatory5);
 end
 
 options.color_area = [255 0 0]./255;
