@@ -23,15 +23,15 @@ elseif lambdatype == 4
     lambdahat = neuron.lambda + frc - fro; % MS - opto for all
 elseif lambdatype == 5
     lambdahat = neuron.lambda + frc; % MS 
-    lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + fro(neuron.inhibitory); % Optogenetics excitatory opsin for inhibitory
+    lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + fro(neuron.inhibitory)'; % Optogenetics excitatory opsin for inhibitory
 elseif lambdatype == 6
     lambdahat = neuron.lambda + frc; % MS
-    lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + fro(neuron.inhibitory); % Optogenetics excitatory opsin for inhibitory
-    lambdahat(neuron.excitatory) = lambdahat(neuron.excitatory) - fro(neuron.excitatory); % Optogenetics inhibitory opsin for excitatory
+    lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + fro(neuron.inhibitory)'; % Optogenetics excitatory opsin for inhibitory
+    lambdahat(neuron.excitatory) = lambdahat(neuron.excitatory) - fro(neuron.excitatory)'; % Optogenetics inhibitory opsin for excitatory
 elseif lambdatype == 7
     lambdahat = neuron.lambda + frc; % MS
     lambdahat = lambdahat - fro; % Inhibitory opsin in all cells
-    lambdahat(neuron.excitatory) = lambdahat(neuron.excitatory) + fro(neuron.excitatory); % Excitatory opsin in excitatory neurons
+    lambdahat(neuron.excitatory) = lambdahat(neuron.excitatory) + fro(neuron.excitatory)'; % Excitatory opsin in excitatory neurons
 end
 
 % Ensuring a firing rate limit is applied

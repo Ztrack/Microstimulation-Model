@@ -10,7 +10,7 @@ neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 
 % lambdatype:
-lambdatype = 4; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
+lambdatype = 7; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
 
 
 %% Problem Definiton
@@ -71,19 +71,19 @@ eo = x(101:200); % Electrode optical stimulation values
 ElectrodeNo = 1:length(ec);
 Ie_Axon_Neurons = zeros(NumNeurons,1); % Initialize current vector
 Ie_Soma_Neurons = zeros(NumNeurons,1);
-Ir_Soma_Neurons = zeros(NumNeurons,1); % Initialize irridance
+Il_Soma_Neurons = zeros(NumNeurons,1); % Initialize irridance
 
 for i = 1:length(ec) % Summation of current for every neuron component by every electrode & its corresponding current
     Ie_Axon_Neurons = Ie_Axon_Neurons + neuron.io.axon(:,ElectrodeNo(i)).*ec(i);
     Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*ec(i).*neuron.dirmult(:,i);
-    Ir_Soma_Neurons = Ir_Soma_Neurons + neuron.oo.soma(:,ElectrodeNo(i)).*eo(i);
+    Il_Soma_Neurons = Il_Soma_Neurons + neuron.oo.soma(:,ElectrodeNo(i)).*eo(i);
 end
 
 Ie_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons. AU Current
-Ir_Neurons = Ir_Soma_Neurons; % Summation of current directly from stimulus. AU irridance
+Il_Neurons = Il_Soma_Neurons; % Summation of current directly from stimulus. AU irridance
 
 % Calculate Lambda Hat
-[lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Ir_Neurons,neuron.inhibitoryfactor,lambdatype);
+[lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,neuron.inhibitoryfactor,lambdatype);
 
 % neuron activation
 NumTrials = 100;
