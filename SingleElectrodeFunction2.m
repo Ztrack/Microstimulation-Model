@@ -34,7 +34,7 @@ neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 inhibitoryfactor = 0.01; % at rate = 40hz (for inhibitory), there is a X% inhibition factor active. This increases linearly with lambda.
 
 %% Loop Start
-h = 100; % number of steps for current/LI
+h = 50; % number of steps for current/LI
 
 % if lambdatype == 1
 %     unitsmax = 30000; % Point at which 100% of neurons are activated
@@ -48,20 +48,18 @@ h = 100; % number of steps for current/LI
 
 if lambdatype == 1
     unitsmin = 1;
-    unitsmax = 1000; 
+    unitsmax = 200000; 
 else
     unitsmin = .0001;
-    unitsmax = .002; 
+    unitsmax = .0025; 
 end
 units = linspace(unitsmin,unitsmax,h); 
 
-output = zeros(100,h,NumNeurons,1); % Stores poisson spike rate for every output
+output = zeros(100,h,NumNeurons); % Stores poisson spike rate for every output, logical matrix
 
 parfor j = 1:100 % Iterate every electrode
-    output1 = zeros(h,NumNeurons,1);
+    output1 = zeros(h,NumNeurons);
     ElectrodeNo = j;
-    DistanceNeurons = sqrt((electrode.x(j)-neuron.x).^2 + (electrode.y(j) - neuron.y).^2); % Calculate distance of every neuron to this electrode
-    DistanceNeurons = DistanceNeurons <= median(DistanceNeurons); % Find if the neuron is within the closest 50% of all neurons to this electrode
     
     for i = 1:length(units)
         
@@ -70,19 +68,25 @@ parfor j = 1:100 % Iterate every electrode
         
         % Calculate neuron.lambda Change for poisson process
         [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,inhibitoryfactor,lambdatype);
+        BestNeurons = lambdahat >= median(lambdahat); % Calculate only the easiest to activate 50%
         
         % Calculate Poisson spike rates for each neuron
         for ii = 1:NumNeurons
-            if DistanceNeurons(ii) == 1
-                y = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct); % Calculate Lambda
-                output1(i,ii) = sum(y > neuron.lambda(ii)+1) >= simulation.*.50;
+            if BestNeurons(ii) == 1
+                y = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct) > neuron.lambda(ii)+1; % Calculate Lambda
+                output1(i,ii) = sum(y);
+                %outputactivated(ii) = sum(y) >= simulation.*(.5); % Useful for debugging
             end
         end
         
     end
     
-    output(j,:,:,:) = output1; % Output result for this parfor loop
+    output(j,:,:) = output1; % Output result for this parfor loop
     disp(['Electrode ' num2str(j) ' done']);
 end
 
-save('SEoutput.mat','output','units','-v7.3'); % Single electrode results output
+if lambdatype == 1
+    save('SEoutputc.mat','output','units','-v7.3'); % Single electrode results output
+elseif lambdatype == 2
+    save('SEoutputo.mat','output','units','-v7.3'); % Single electrode results output
+end

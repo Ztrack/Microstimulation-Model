@@ -47,7 +47,7 @@ for kkk = 1:2
     
     if lambdatype == 1
         unitsmin = 1;
-        unitsmax = 1200;
+        unitsmax = 100000;
     else
         unitsmin = .0001;
         unitsmax = .002;

@@ -1,64 +1,88 @@
 clc; clear; close all;
 load('InitialConditionsFull.mat');
-load('threshold.mat');
+
+n = 0.5; % Percent activation to count as 'activated'
+x = 10; % The current/opto step must activate this many motion tuned neurons to store the step
+load('SEoutputc.mat');
+threshold.c = thresholdfun(output,units,n,x);
+load('SEoutputo.mat');
+threshold.o = thresholdfun(output,units,n,x);
 %% Microstimulation + Optogenetics Optomization
 
 neuron.inhibitoryfactor = 0.01;
-neuron.threshold.rs = 29.0; % Value determined for 95%
-neuron.threshold.fs = 53.0; % % Value determined for 95%
+neuron.threshold.rs = 29.0; % Value determined for 95%, used in testing
+neuron.threshold.fs = 53.0; % % Value determined for 95%, used in testing
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 
 % lambdatype:
-lambdatype = 7; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
+lambdatype = 2; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
 
+%% Matlab PSO options
+rng default  % For reproducibility
+fun = @(x) MotionRatioCombined(x,NumNeurons,neuron,lambdatype);
+nvars = 200;
+lb = zeros(1,nvars);
+ub = [threshold.c threshold.o];
+options = optimoptions('particleswarm','SwarmSize',100,'UseParallel',true,'display','iter');
 
-%% Problem Definiton
+%% Matlab PSO Once
+[x,fval,exitflag,output] = particleswarm(fun,nvars,lb,ub,options);
 
-problem.CostFunction = @(x) MotionRatioCombined(x,NumNeurons,neuron,lambdatype); % Cost
-problem.nVar = 200;       % Number of Unknown (Decision) Variables
-problem.VarMin =  zeros(200,1);
-problem.VarMax =  [threshold.c threshold.o]';   % Upper Bound of Decision Variables
+%% Matlab PSO Iterative
 
-% Parameters of PSO
-params.MaxIt = 50;        % Maximum Number of Iterations
-params.AdaptiveItMax = 50; % Max number of adaptive iterations
-params.AdaptiveItThreshold = .01; % if the absolute value of it - (it-1) is less than this, we say there is little enough change to end the search
-params.nPop = 100;           % Population Size (Swarm Size)
-params.w = 1;               % Intertia Coefficient
-params.wdamp = .99;        % Damping Ratio of Inertia Coefficient
-params.c1 = 5;              % Personal Acceleration Coefficient
-params.c2 = 5;              % Social Acceleration Coefficient
-params.ShowIterInfo = true; % Flag for Showing Iteration Informatin
-
-
-%% Calling PSO
-out = PSOFunction2(problem, params);
-
-
-%% Calling PSO
-
-numrepeats = 100;
-BestCost = inf;
-for i = 1:7
+options = optimoptions('particleswarm','SwarmSize',100,'UseParallel',true,'display','off');
+numrepeats = 30;
+for i = 1:4
     
     lambdatype = i;
+    fun = @(x) MotionRatioCombined(x,NumNeurons,neuron,lambdatype);
     for ii = 1:numrepeats
-        out = PSOFunction2(problem, params);
-        CostsCurve(i,ii,:) = out.BestCosts;
+        [x,fval,exitflag,output] = particleswarm(fun,nvars,lb,ub,options);
+        CostsCurve(i,ii,:) = fval;
     end
     
 end
 
-% figure;
-% plot(CostsCurve, 'LineWidth', 2);
-% semilogy(CostsCurve, 'LineWidth', 2);
-% xlabel('Iteration Number');
-% ylabel('Non-Motion / Motion Neuron Ratio');
-% title('Optimization Performance');
-% grid on;
+%% Matlab PSO Iterative Across #'s
 
-save optimize.mat;
+for i = 1:5:250
+    x = i;
+    load('SEoutputc.mat');
+    threshold.c = thresholdfun(output,units,n,x);
+    load('SEoutputo.mat');
+    threshold.o = thresholdfun(output,units,n,x);
+    for ii = 1:4
+        numrepeats = 1;
+        for ii = 1:4
+            
+            lambdatype = ii;
+            fun = @(x) MotionRatioCombined(x,NumNeurons,neuron,lambdatype);
+            for iii = 1:numrepeats
+                [x,fval,exitflag,output] = particleswarm(fun,nvars,lb,ub,options);
+                CostsCurve(ii,iii,:) = fval;
+            end
+            
+        end
+    end
+end
+        
+%% Plotting
+CostsCurve(CostsCurve == inf) = NaN;
+CostsCurve(CostsCurve == 0) = NaN;
+figure;
+for i = 1:4
+    y = squeeze(nanmean(CostsCurve(i,:,:),2));
+    yerr = squeeze(1.96.*nanstd(CostsCurve(i,:,:))/sqrt(numrepeats));
+    errorbar(y,yerr);
+    hold on;
+end
+xlabel('Iteration Number');
+ylabel('Non-Motion / Motion Neuron Ratio');
+title('Optimization Performance');
+legend('MS','Opto','MS + Opto (+all)','MS + Opto (-all)');
+
+z = MotionRatioCombined(x,NumNeurons,neuron,lambdatype)
 %% Functions
 function z = MotionRatioCombined(x,NumNeurons,neuron,lambdatype) % Cost
 % z = solution to be minimzied
@@ -66,12 +90,12 @@ function z = MotionRatioCombined(x,NumNeurons,neuron,lambdatype) % Cost
 ec = x(1:100); % Electrical stimulation values
 eo = x(101:200); % Electrode optical stimulation values
 
-% Electrical Field Summation
+% Electrical / Optical Field Summation
 
 ElectrodeNo = 1:length(ec);
 Ie_Axon_Neurons = zeros(NumNeurons,1); % Initialize current vector
 Ie_Soma_Neurons = zeros(NumNeurons,1);
-Il_Soma_Neurons = zeros(NumNeurons,1); % Initialize irridance
+Il_Soma_Neurons = zeros(NumNeurons,1); % Initialize luminous intensity
 
 for i = 1:length(ec) % Summation of current for every neuron component by every electrode & its corresponding current
     Ie_Axon_Neurons = Ie_Axon_Neurons + neuron.io.axon(:,ElectrodeNo(i)).*ec(i);
@@ -79,8 +103,8 @@ for i = 1:length(ec) % Summation of current for every neuron component by every 
     Il_Soma_Neurons = Il_Soma_Neurons + neuron.oo.soma(:,ElectrodeNo(i)).*eo(i);
 end
 
-Ie_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons. AU Current
-Il_Neurons = Il_Soma_Neurons; % Summation of current directly from stimulus. AU irridance
+Ie_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons.
+Il_Neurons = Il_Soma_Neurons; % Summation of luminous intensity directly from stimulus.
 
 % Calculate Lambda Hat
 [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,neuron.inhibitoryfactor,lambdatype);
