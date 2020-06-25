@@ -74,13 +74,13 @@ hold off
 
 options.handle     = figure; set(gcf,'Position',[000 000 800 700]);
 options.color_area = [0 0 255]./255; % Blue : Excitatory
-p1 = plot_areaerrorbar(stepsol.current.excitatory,options); title('Neuron Activation Through Center Electrode'); xlabel('Current (mA)'); ylabel('Percentage Activated Neurons');
+plot_areaerrorbar(stepsol.current.excitatory,options); title('Neuron Activation Through Center Electrode'); xlabel('Current (mA)'); ylabel('Percentage Activated Neurons');
 hold on
 options.color_area = [255 0 0]./255; % Red : Inhibitory
-p2 = plot_areaerrorbar(stepsol.current.inhibitory,options);
+plot_areaerrorbar(stepsol.current.inhibitory,options);
 title('Excitatory / Inhibitory Activation Through Center Electrode'); xlabel('Current (mA)'); ylabel('Percentage Activated Neurons');
 %xline(find(mean(stepsol.current.excitatory) >= 50,1),'color','blue'); xline(find(mean(stepsol.current.inhibitory) >= 50,1),'color','red'); 
-legend([p1,p2,'']); 
+legend('','Excitatory','','Inhibitory','50% Excitatory','50% Inhibitory'); 
 ylim([0 100]);
 disp((find(mean(stepsol.current.excitatory) >= 50,1)-(find(mean(stepsol.current.inhibitory) >= 50,1)))*50);
 hold off
@@ -549,24 +549,20 @@ ylim([0 100]);
 
 %% Functions
 
-function p1 = plot_areaerrorbar(data, options)
+function plot_areaerrorbar(data, options)
     options.color_line = options.color_area;
     % Default options
     if(nargin<2)
-        options.handle = figure(1);
-        options.color_area = [128 193 219]./255; % Blue theme
+        options.handle     = figure(1);
+        options.color_area = [128 193 219]./255;    % Blue theme
         options.color_line = [ 52 148 186]./255;
-        %options.color_area = [243 169 114]./255; % Orange theme
+        %options.color_area = [243 169 114]./255;    % Orange theme
         %options.color_line = [236 112  22]./255;
-        options.alpha = 0.5;
+        options.alpha      = 0.5;
         options.line_width = 2;
-        options.error = 'std';
+        options.error      = 'std';
     end
-    
-    if isfield(options,'x_axis')==0
-        options.x_axis = 1:size(data,2); 
-    end
-    
+    if(isfield(options,'x_axis')==0), options.x_axis = 1:size(data,2); end
     options.x_axis = options.x_axis(:);
     
     % Computing the mean and standard deviation of the data matrix
@@ -588,7 +584,12 @@ function p1 = plot_areaerrorbar(data, options)
     set(patch, 'edgecolor', 'none');
     set(patch, 'FaceAlpha', options.alpha);
     hold on;
-    p1 = plot(options.x_axis, data_mean, 'color', options.color_line, 'LineWidth', options.line_width);
+    plot(options.x_axis, data_mean, 'color', options.color_line, ...
+        'LineWidth', options.line_width);
     
+    if options.legendswitch == 1
+    legend(options.legend);
+    end
     hold off;
+    
 end
