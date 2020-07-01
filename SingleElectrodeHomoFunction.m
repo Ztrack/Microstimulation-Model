@@ -53,39 +53,48 @@ h = 50; % number of steps for current/LI
 % units = linspace(0,units50,h*.8);  % Current OR liminous intensity Steps
 % units = [units linspace(units50+unitsmax*.2*h,unitsmax,h*.2)];
 
-if lambdatype == 1
-    unitsmin = 1;
-    unitsmax = 200000;
-else
-    unitsmin = .0001;
-    unitsmax = .0025;
-end
-units = linspace(unitsmin,unitsmax,h);
 
-
-output = zeros(h,NumNeurons,10); % Stores poisson spike rate for every output, logical matrix
 ElectrodeNo = 45; % Number of the electrode, 45 = center
 
-parfor i = 1:length(units)
-    output1 = zeros(NumNeurons,10);
-    Ie_Neurons = neuron.io.soma(:,ElectrodeNo).*neuron.dirmult(:,ElectrodeNo).*units(i) + neuron.io.axon(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus + backpropogated up by axons. AU Current
-    Il_Neurons = neuron.oo.soma(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus. AU luminous intensity
+for j = 1:2
     
-    % Calculate neuron.lambda Change for poisson process
-    [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,inhibitoryfactor,lambdatype);
+    lambdatype = j;
+    if lambdatype == 1
+        unitsmin = 1;
+        unitsmax = 200000;
+    else
+        unitsmin = .0001;
+        unitsmax = .0025;
+    end
+    units = linspace(unitsmin,unitsmax,h);
+    output = zeros(h,NumNeurons,10); % Stores poisson spike rate for every output, logical matrix
     
-    % Calculate Poisson spike rates for each neuron
-    for ii = 1:NumNeurons
+    parfor i = 1:length(units)
+        
+        output1 = zeros(NumNeurons,10);
+        Ie_Neurons = neuron.io.soma(:,ElectrodeNo).*neuron.dirmult(:,ElectrodeNo).*units(i) + neuron.io.axon(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus + backpropogated up by axons. AU Current
+        Il_Neurons = neuron.oo.soma(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus. AU luminous intensity
+        
+        % Calculate neuron.lambda Change for poisson process
+        [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,inhibitoryfactor,lambdatype);
+        
+        % Calculate Poisson spike rates for each neuron
+        for ii = 1:NumNeurons
             y = nonhomoPoissonGen(lambdahat(ii), dt, NumTrials,simulation,bpct) > neuron.lambdahomo(ii,:)+1; % Calculate Lambda
-            output1(i,:) = sum(y);
+            output1(ii,:) = sum(y);
             %outputactivated(ii) = sum(y) >= simulation.*(.5); % Useful for debugging
+        end
+        
+        output(i,:,:) = output1;
+        
     end
     
-    output(i,:,:) = output1;
+    if lambdatype == 1
+        solrbhomo.c = output;
+        solrbhomo.units_c = units;
+    elseif lambdatype == 2
+        solrbhomo.units_o = units;
+    end
+    
 end
-
-if lambdatype == 1
-    save('SEoutputc.mat','output','units','-v7.3'); % Single electrode results output
-elseif lambdatype == 2
-    save('SEoutputo.mat','output','units','-v7.3'); % Single electrode results output
-end
+save('solrbhomo.mat','solrbhomo','units','-v7.3'); % Single electrode results output

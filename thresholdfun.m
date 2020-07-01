@@ -7,6 +7,8 @@ function output = thresholdfun(SEoutput,units,n,x)
 % We must find a proper threshold for each elecrode. This will be based
 % on the first x neurons of the motion orientation we are interested in
 % new output must be a low and a high value per stimulation strategy (4 total)
+% n = 0.5 % Percent activation to count as 'activated'
+% x = The current/opto step must activate this many motion tuned neurons to store the step
 
 output = zeros(1,size(SEoutput,1));
 
