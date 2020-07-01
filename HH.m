@@ -9,6 +9,19 @@ t = [0 1000];
 %y = [17.1991 0.8462 0.95622];
 y = [0 0 0 0]; % Initial conditions calculated by running code with all 0 and letting it run
 type = 1;
+x = 1;
+y = [-64.0285 0.088919 0.032579 0.78245];
+
+setGlobalx(x,type)
+[time,y_sim] = ode45(@ydiff,[min(t) max(t)],y,options); % Calls ODE45 function with y, time, and options inputs
+y_sol = y_sim; % Stores Y solution data seperately
+pks = findpeaks(y_sol(:,1),'MinPeakHeight',-30,'MinPeakDistance',1); % Finds the spikes
+
+figure(1); plot(time,y_sol(:,1),'linewidth',2); ylabel('Voltage mV'); xlabel('Time in ms'); title('HH Model');
+figure(2); plot(time,y_sol(:,2:end),'linewidth',2); legend('n','m','h'); ylabel('Activation Parameters'); xlabel('Time in ms'); title('HH Model');
+
+
+%%
 x = linspace(0,30,10);
 
 % Solutions

@@ -11,6 +11,7 @@ Oscillatory_Behavior = 1; % is set =1, .33 of all inhibitory neurons will use Os
 Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
 lambdatype = 1; % What type of calcultion stimulus is presented. 1= current, 2 = opsin
 axonswitch = 1; % if 0, then no axon is added. If 1, then axon is used in summation.
+homogeneous = 1; % If 0, non-homogeneous, rate varying poisson process is used
 
 % Apply Features
 if calctype == 1 %load initial condition
@@ -52,7 +53,7 @@ for kkk = 1:2
         unitsmin = .0001;
         unitsmax = .002;
     end
-    I0 = linspace(0,unitsmax,h); 
+    I0 = linspace(0,unitsmax,h);
     
     
     for kk = 1:1
@@ -76,7 +77,7 @@ for kkk = 1:2
             neuron.excitatory = find(neuron.type == 2);
             neuron.lambdamod(neuron.type == 1) = 40;
             neuron.lambdamod(neuron.type == 2) = neuron.lambda(2) - neuron.lambda(1)*(neuron.lambda(1).*(inhibitoryfactor(1)/40));
-
+            
         end
         
         Neuron_RB = NaN(numrepeats,NumNeurons); % Rhoebase for every neuron, stored as I0 which causes neuron.lambda+1 spike
@@ -96,16 +97,22 @@ for kkk = 1:2
                 % Finding RB for each neuron
                 
                 for i = 1:NumNeurons
-                    if isnan(Neuron_RB1(i)) % If RB does not exist, continue, otherwise this neuron is skipped
-                        if neuron.oscillatorytype(i) == 1 & Oscillatory_Behavior == 1 % If the neuron has oscillatory behavior then use:
+                    if isnan(Neuron_RB1(i))| homogeneous == 0 % If RB does not exist, continue, otherwise this neuron is skipped
+                        
+                        if homogeneous == 0
+                            Lambda_Hat_Spikes = nonhomoPoissonGen(lambdahat(i), dt, NumTrials);
+                            Lambda_Hat_Spikes = sum(Lambda_Hat_Spikes,2)
+                            
+                        elseif neuron.oscillatorytype(i) == 1 & Oscillatory_Behavior == 1 % If the neuron has oscillatory behavior then use:
                             Lambda_Hat_Spikes = Oscillatory_PoissonGen(lambdahat(i), dt, NumTrials);
+                            
                         else % Otherwise use the simple function:
                             Lambda_Hat_Spikes = Simple_PoissonGen(lambdahat(i), dt, NumTrials);
                         end
                         
                         Y = prctile(Lambda_Hat_Spikes,bpct); % Calculates bottom xth percentile
-                        if Y > mean(neuron.lambda(i)+1)
-                            Neuron_RB1(i) = I0(ii);
+                        if Y > neuron.lambda(i)+1
+                            Neuron_RB1(i,:) = I0(ii);
                         end
                     end
                 end

@@ -16,7 +16,7 @@ neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 
 % lambdatype:
-lambdatype = 2; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
+lambdatype = 1; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
 
 %% Matlab PSO options
 rng default  % For reproducibility
@@ -27,7 +27,7 @@ ub = [threshold.c threshold.o];
 options = optimoptions('particleswarm','SwarmSize',100,'UseParallel',true,'display','iter');
 
 %% Matlab PSO Once
-[x,fval,exitflag,output] = particleswarm(fun,nvars,lb,ub,options);
+[x,fval,exitflag,output] = particleswarm(fun,nvars);
 
 %% Matlab PSO Iterative
 
@@ -81,8 +81,18 @@ xlabel('Iteration Number');
 ylabel('Non-Motion / Motion Neuron Ratio');
 title('Optimization Performance');
 legend('MS','Opto','MS + Opto (+all)','MS + Opto (-all)');
+%% Simulated Annealing
+% https://www.mathworks.com/help/gads/simulannealbnd.html
 
-z = MotionRatioCombined(x,NumNeurons,neuron,lambdatype)
+x = simulannealbnd(fun,x0,lb,ub)
+
+%% Direct Search
+% https://www.mathworks.com/help/gads/patternsearch.html
+A = [];
+b = [];
+Aeq = [];
+beq = [];
+x = patternsearch(fun,x0,A,b,Aeq,beq,lb,ub)
 %% Functions
 function z = MotionRatioCombined(x,NumNeurons,neuron,lambdatype) % Cost
 % z = solution to be minimzied

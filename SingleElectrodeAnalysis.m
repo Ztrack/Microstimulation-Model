@@ -226,11 +226,15 @@ Inhibitory_Dist = NeuronStimDist(neuron.inhibitory);
 plot(Excitatory_Dist,Excitatory_RB,'.','color','blue');
 hold on
 plot(Inhibitory_Dist,Inhibitory_RB,'.','color','red'); 
-hold on; %load('fits.mat');
-plot(fit_excitatory,'blue'); % Got from Cftools poly4
-plot(fit_inhibitory,'red');
+hold on; 
+
+x = 1:3500;
+Y1 = 0.00644.*x.^2+6.771.*x--3580; % Model Fit Data
+Y2 = 0.003956.*x.^2+0.5833.*x-68.35; % Model Fit Data
+plot(Y1,'blue');
+plot(Y2,'red');
 %ylim([0 1.75e04]); xlim([0 3000]);
-legend('Excitatory','Inhibitory','1.13e-03*x^2 + 2.11*x - 1034','1.94e-04*x^2 + 2.35*x - 6.88'); 
+legend('Excitatory','Inhibitory'); 
 title('Neuron RB vs Distance to Stimulus'); xlabel('Distance to stimulus um'); ylabel('Current (mA)');
 hold off
 
