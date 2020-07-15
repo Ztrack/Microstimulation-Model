@@ -168,5 +168,14 @@ Stim_int = zeros(50,50);
 Stim_int = 1000./Ed;
 subplot(2,1,2); imagesc(Stim_int); colorbar; xlabel('um'); ylabel('um'); title('Current Intensity Distribution');
 
+%% Spread fit according to stanford chart
+% https://web.stanford.edu/group/dlab/cgi-bin/graph/chart.php
+x = 0:0.001:3; 
+lightspread.irridance.a = 1.536;
+lightspread.irridance.b = 0.1991;
+lightspread.irridance.c = 0.02106;
+y = (lightspread.irridance.a) ./ (x.^2 + lightspread.irridance.b.*x + lightspread.irridance.c);
+figure; plot(x,y);
+
 
 %save('lightspread.mat','lightspread');

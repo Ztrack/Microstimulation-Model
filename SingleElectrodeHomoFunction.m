@@ -36,10 +36,11 @@ neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 % Calculating the number of spikes in each region of time, to later analyze
 % if we reached +1 spikes within this region.
 
-neuron.lambdahomo = zeros(NumNeurons,10);
-neuron.lambdahomo(neuron.inhibitory,:) = repmat(mean(nonhomoPoissonGen(neuron.lambda(1), dt, NumTrials,2000,50),1),size(neuron.inhibitory,2),1); % Sum of these numbers = input lambda, or close to
-neuron.lambdahomo(neuron.excitatory,:) = repmat(mean(nonhomoPoissonGen(neuron.lambda(2), dt, NumTrials,2000,50),1),size(neuron.excitatory,2),1); % Sum of these numbers = input lambda, or close to
-
+for i = 1:3
+neuron.adapt.lambdahomo(i,:,:) = zeros(NumNeurons,10);
+neuron.adapt.lambdahomo(i,neuron.inhibitory,:) = repmat(mean(nonhomoPoissonGen(neuron.lambda(1), dt, NumTrials,simulation,bpct,neuron.adapt.ratefunction(i,:)),1),size(neuron.inhibitory,2),1); % Sum of these numbers = input lambda, or close to
+neuron.adapt.lambdahomo(i,neuron.excitatory,:) = repmat(mean(nonhomoPoissonGen(neuron.lambda(2), dt, NumTrials,simulation,bpct,neuron.adapt.ratefunction(i,:)),1),size(neuron.excitatory,2),1); % Sum of these numbers = input lambda, or close to
+end
 %% Loop Start
 h = 50; % number of steps for current/LI
 
@@ -80,7 +81,7 @@ for j = 1:2
         
         % Calculate Poisson spike rates for each neuron
         for ii = 1:NumNeurons
-            y = nonhomoPoissonGen(lambdahat(ii), dt, NumTrials,simulation,bpct,neuron.adapt.ratefunction(neuron.adapt.type(ii),:)) > neuron.lambdahomo(ii,:)+1; % Calculate Lambda
+            y = nonhomoPoissonGen(lambdahat(ii), dt, NumTrials,simulation,bpct,neuron.adapt.ratefunction(neuron.adapt.type(ii),:)) > neuron.adapt.lambdahomo(neuron.adapt.type(ii),ii,:)+1; % Calculate Lambda
             output1(ii,:) = sum(y);
             %outputactivated(ii) = sum(y) >= simulation.*(.5); % Useful for debugging
         end

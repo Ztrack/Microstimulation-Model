@@ -333,10 +333,13 @@ for i = 1:NumNeurons
         neuron.io.axon(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.indices(i).axon).^2)); % Summation 1/r^2 area component of axon
         neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.indices(i).soma).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
         
-        lightspread.calc = lightspread.averaged.a.*exp(lightspread.averaged.b.*Stim_Distance_Map(j,neuron.indices(i).soma)); % Light Intensity Calculation
-        % lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
-        neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
+        %lightspread.calc = lightspread.averaged.a.*exp(lightspread.averaged.b.*Stim_Distance_Map(j,neuron.indices(i).soma)); % Light Intensity Calculation
+        %lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
+        %neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
         
+        x = Stim_Distance_Map(j,neuron.indices(i).soma)/1000; % Distance Values in mm
+        irridance = (lightspread.irridance.a) ./ (x.^2 + lightspread.irridance.b.*x + lightspread.irridance.c); % Irridance value vs distance, in mW/mm^2
+        neuron.oo.soma(i,j) = sum(sum(irridance)); % Sum of irridance on neuron, in mW/mm^2
     end
     
 end

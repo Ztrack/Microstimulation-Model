@@ -65,12 +65,16 @@ neuron.oscillatory = neuron.inhibitory(randperm(numel(neuron.inhibitory), ceil(l
 neuron.nonoscillatory = setdiff(neuron.inhibitory,neuron.oscillatory);
 neuron.oscillatorytype = zeros(1,NumNeurons); neuron.oscillatorytype(neuron.oscillatory) = 1; % Stores if neuron is non-oscillatory (0), or oscillatory (1)
 
-neuron.adapttype = ones(1,NumNeurons); % 1 = Fast Adapting Neurons
-neuron.adapttype(randperm(NumNeurons,floor(NumNeurons.*.06))) = 2; % 2 = Slow Adapting Neurons
-randperm(length(neuron.adapttype))
-rand = randperm(find(neuron.adapttype == 1));
-neuron.adapttype(rand(find(neuron.adapttype == 1))) = 3;
 
+neuron.adapt.type = ones(1,NumNeurons); % 1 = Fast Adapting Neurons
+rand = randperm(length(neuron.adapttype)); % Random Permutation
+neuron.adapt.type(rand(1:floor(NumNeurons.*.06))) = 2; % 2 = Slow Adapting Neurons
+rand = setdiff(randperm(length(neuron.adapttype)),find(neuron.adapttype == 2)); % Random Permutation
+neuron.adapt.type(rand(1:floor(NumNeurons.*.40))) = 3; % Mixed
+load('rateFunctions.mat');
+neuron.adapt.ratefunction(1,:) = RA_function;
+neuron.adapt.ratefunction(2,:) = SA_function;
+neuron.adapt.ratefunction(3,:) = MIXED_function;
 
 %% Motif Location Selector
 
@@ -329,9 +333,12 @@ for i = 1:NumNeurons
         neuron.io.axon(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.indices(i).axon).^2)); % Summation 1/r^2 area component of axon
         neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.indices(i).soma).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
         
-        lightspread.calc = lightspread.averaged.a.*exp(lightspread.averaged.b.*Stim_Distance_Map(j,neuron.indices(i).soma)); % Light Intensity Calculation
-        % lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
-        neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
+        %lightspread.calc = lightspread.averaged.a.*exp(lightspread.averaged.b.*Stim_Distance_Map(j,neuron.indices(i).soma)); % Light Intensity Calculation
+        %lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
+        %neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
+        
+        x = Stim_Distance_Map(j,neuron.indices(i).soma); % Distance Values
+        irridance = (lightspread.irridance.a) ./ (x.^2 + lightspread.irridance.b.*x + lightspread.irridance.c);
         
     end
     

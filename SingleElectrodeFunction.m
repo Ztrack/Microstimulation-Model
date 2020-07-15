@@ -51,7 +51,7 @@ for kkk = 1:2
         unitsmax = 100000;
     else
         unitsmin = .0001;
-        unitsmax = .002;
+        unitsmax = .001;
     end
     I0 = linspace(0,unitsmax,h);
     
@@ -97,22 +97,12 @@ for kkk = 1:2
                 % Finding RB for each neuron
                 
                 for i = 1:NumNeurons
-                    if isnan(Neuron_RB1(i))| homogeneous == 0 % If RB does not exist, continue, otherwise this neuron is skipped
+                    if isnan(Neuron_RB1(i)) % If RB does not exist, continue, otherwise this neuron is skipped
                         
-                        if homogeneous == 0
-                            Lambda_Hat_Spikes = nonhomoPoissonGen(lambdahat(i), dt, NumTrials);
-                            Lambda_Hat_Spikes = sum(Lambda_Hat_Spikes,2)
-                            
-                        elseif neuron.oscillatorytype(i) == 1 & Oscillatory_Behavior == 1 % If the neuron has oscillatory behavior then use:
-                            Lambda_Hat_Spikes = Oscillatory_PoissonGen(lambdahat(i), dt, NumTrials);
-                            
-                        else % Otherwise use the simple function:
-                            Lambda_Hat_Spikes = Simple_PoissonGen(lambdahat(i), dt, NumTrials);
-                        end
-                        
+                        Lambda_Hat_Spikes = Simple_PoissonGen(lambdahat(i), dt, NumTrials);
                         Y = prctile(Lambda_Hat_Spikes,bpct); % Calculates bottom xth percentile
                         if Y > neuron.lambda(i)+1
-                            Neuron_RB1(i,:) = I0(ii);
+                            Neuron_RB1(i) = I0(ii);
                         end
                     end
                 end
