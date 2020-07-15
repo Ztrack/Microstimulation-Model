@@ -10,8 +10,8 @@ theta_threshold = 45; % angle difference threshold - If the neuron axon is out o
 
 % Population Properties
 NumNeurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
-NumNeuronsMotif = 10; % # of neurons in each motif
-NumInhibitoryMotif = 5; % # of inhibitory neurons in motif
+NumNeuronsMotif = 5; % # of neurons in each motif
+NumInhibitoryMotif = 1; % # of inhibitory neurons in motif
 NumMotifs = NumNeurons/NumNeuronsMotif; % # Neuron in Motif.
 Inhibitory_Oscillatory_Percentage = .33; % Percentage of inhibitory neurons which oscillate
 NeuronMotionRatio = 0.2; % Ratio of Motion Neurons to non-motion neurons. based on population of excitatory neurons
@@ -64,6 +64,17 @@ neuron.motion.direction = randi([1,2],[1,length(neuron.motion.number)]); % Gives
 neuron.oscillatory = neuron.inhibitory(randperm(numel(neuron.inhibitory), ceil(length(neuron.inhibitory)*Inhibitory_Oscillatory_Percentage)));
 neuron.nonoscillatory = setdiff(neuron.inhibitory,neuron.oscillatory);
 neuron.oscillatorytype = zeros(1,NumNeurons); neuron.oscillatorytype(neuron.oscillatory) = 1; % Stores if neuron is non-oscillatory (0), or oscillatory (1)
+
+
+neuron.adapt.type = ones(1,NumNeurons); % 1 = Fast Adapting Neurons
+rand = randperm(length(neuron.adapttype)); % Random Permutation
+neuron.adapt.type(rand(1:floor(NumNeurons.*.06))) = 2; % 2 = Slow Adapting Neurons
+rand = setdiff(randperm(length(neuron.adapttype)),find(neuron.adapttype == 2)); % Random Permutation
+neuron.adapt.type(rand(1:floor(NumNeurons.*.40))) = 3; % Mixed
+load('rateFunctions.mat');
+neuron.adapt.ratefunction(1,:) = RA_function;
+neuron.adapt.ratefunction(2,:) = SA_function;
+neuron.adapt.ratefunction(3,:) = MIXED_function;
 
 %% Motif Location Selector
 

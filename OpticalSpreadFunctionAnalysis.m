@@ -7,7 +7,7 @@ origin = find(spreadata==max(max(spreadata))); % Origin indices
 [y1,x1] = ind2sub([size(spreadata)],origin);  % Origin x,y
 dataradii = length(spreadata)-max(x1,y1);
 spreadata = spreadata(y1-dataradii:y1+dataradii,x1-dataradii:x1+dataradii); % Center data around origin
-spreadata = spreadata./max(spreadata);
+%spreadata = spreadata./max(spreadata);
 k = 1;
 for i = 1:4
 

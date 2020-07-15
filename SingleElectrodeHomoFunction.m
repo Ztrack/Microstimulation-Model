@@ -80,7 +80,7 @@ for j = 1:2
         
         % Calculate Poisson spike rates for each neuron
         for ii = 1:NumNeurons
-            y = nonhomoPoissonGen(lambdahat(ii), dt, NumTrials,simulation,bpct) > neuron.lambdahomo(ii,:)+1; % Calculate Lambda
+            y = nonhomoPoissonGen(lambdahat(ii), dt, NumTrials,simulation,bpct,neuron.adapt.ratefunction(neuron.adapt.type(ii),:)) > neuron.lambdahomo(ii,:)+1; % Calculate Lambda
             output1(ii,:) = sum(y);
             %outputactivated(ii) = sum(y) >= simulation.*(.5); % Useful for debugging
         end

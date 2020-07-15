@@ -1,4 +1,4 @@
-function output = nonhomoPoissonGen(lambda, dt, numTrials,simulation,bpct)
+function output = nonhomoPoissonGen(lambda, dt, numTrials,simulation,bpct,rateFunction)
 % New non-homogenous poisson funct, a no homo poisson if you will
 % combining MGR's "non_homogenous_poisson().m",
 % with "Simple_PoissonGen.m" from HB's Microstimulation_Model_Pt3_BluehiveA.m
@@ -24,7 +24,6 @@ function output = nonhomoPoissonGen(lambda, dt, numTrials,simulation,bpct)
 %  - binning added to output (10 total, 100ms each)
 
 %% Load Vars
-load('rateFunction.mat');
 rateFunction = (rateFunction .* 0.9) + 3; %add baseline firing rate of 3 sp/s
 
 %% MAIN

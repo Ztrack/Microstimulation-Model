@@ -4,18 +4,28 @@ load('InitialConditionsFull.mat');
 %% Microstimulation Optomization
 
 % Problem Variables
+neuron.inhibitoryfactor = 0.01;
+neuron.threshold.rs = 29.0; % Value determined for 95%, used in testing
+neuron.threshold.fs = 53.0; % % Value determined for 95%, used in testing
+neuron.lambda = zeros(NumNeurons,1);
+neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
+neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 
+% lambdatype:
+lambdatype = 1; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
 
 % Problem Definiton
 
-problem.CostFunction = @(ec) MotionRatio_MS(ec,NumNeurons,neuron.io.axon,neuron.io.soma,Directional_Current_Mult,neuron);  % Cost Function  % Cost Function
+problem.CostFunction = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype); % Cost
 problem.nVar = 100;       % Number of Unknown (Decision) Variables
 problem.VarMin =  0;  % Lower Bound of Decision Variables
-problem.VarMax =  100;   % Upper Bound of Decision Variables
+problem.VarMax =  1000;   % Upper Bound of Decision Variables
 
 % Parameters of PSO
 
 params.MaxIt = 30;        % Maximum Number of Iterations
+params.AdaptiveItMax = 20;
+params.AdaptiveItThreshold = .01;
 params.nPop = 1000;           % Population Size (Swarm Size)
 params.w = 1;               % Intertia Coefficient
 params.wdamp = 1;        % Damping Ratio of Inertia Coefficient
@@ -32,7 +42,7 @@ BestCosts_MS = out.BestCosts;
 
 % Results
 
-figure; set(gcf,'Position',[100 100 800 700]);
+figure;
 % plot(BestCosts, 'LineWidth', 2);
 semilogy(BestCosts_MS, 'LineWidth', 2);
 xlabel('Iteration');
@@ -40,33 +50,43 @@ ylabel('Best Cost');
 grid on;
 
 
+%% Calculate lambdahat for above
+
+ec = BestSol_MS.Position; % Electrical stimulation values
+
+% Electrical / Optical Field Summation
+
+ElectrodeNo = 1:length(ec);
+Ie_Axon_Neurons = zeros(NumNeurons,1); % Initialize current vector
+Ie_Soma_Neurons = zeros(NumNeurons,1);
+Il_Soma_Neurons = zeros(NumNeurons,1); % Initialize luminous intensity
+
+for i = 1:length(ec) % Summation of current for every neuron component by every electrode & its corresponding current
+    Ie_Axon_Neurons = Ie_Axon_Neurons + neuron.io.axon(:,ElectrodeNo(i)).*ec(i);
+    Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*ec(i).*neuron.dirmult(:,i);
+end
+
+Ie_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons.
+Il_Neurons = Il_Soma_Neurons; % Summation of luminous intensity directly from stimulus.
+
+% Calculate Lambda Hat
+[lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,neuron.inhibitoryfactor,lambdatype);
+neuron.mslambdahat = lambdahat;
+
 %% Optogenetics Optimization
 
-% Problem Variables
-[~,Neuron_Activated] = MotionRatio_MS(BestSol_MS.Position,NumNeurons,neuron.io.axon,neuron.io.soma,Directional_Current_Mult,neuron);
-
-Neuron_No_Activated = find(Neuron_Activated == 1); % All neuron # activated from microstimulation
-Neuron_No_Activated_Motion = intersect(Neuron_No_Activated,neuron.motion.number); % All neuron # of motion tuned neurons activated
-Neuron_No_Activated_NonMotion = intersect(Neuron_No_Activated,neuron.nonMotion.number); % All neuron % of non-motion tuned neurons activated
-Activated_Motion = length(Neuron_No_Activated_Motion); % Stores # of activated motion-tuned
-Activated_NonMotion = length(Neuron_No_Activated_NonMotion); % Stores # of activated nonmotion-tuned
-I0_Motion = neuron.io.soma(Neuron_No_Activated_Motion,:); % Stores d information for Motion tuned. sum(I0*e) < 1
-I0_NonMotion = neuron.io.soma(Neuron_No_Activated_NonMotion,:); % Stores d information for non-motion tuned. sum(I0*e) > 1
-Opto_Thresh = 1; % Threshold that needs to be reached to inactivate cell
-% eo = electrode opto stimulus
-
-%%
 % Problem Definiton
+lambdatype = 4;
 
-problem.CostFunction = @(eo) MotionRatio_Opto(eo,Opto_Thresh,I0_Motion,I0_NonMotion,Activated_Motion,Activated_NonMotion,neuron);  % Cost Function  % Cost Function
+problem.CostFunction = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype); % Cost
 problem.nVar = 100;       % Number of Unknown (Decision) Variables
 problem.VarMin =  0;  % Lower Bound of Decision Variables
-problem.VarMax =  100;   % Upper Bound of Decision Variables
+problem.VarMax =  1;   % Upper Bound of Decision Variables
 
 % Parameters of PSO
 
 params.MaxIt = 30;        % Maximum Number of Iterations
-params.nPop = 100000;           % Population Size (Swarm Size)
+params.nPop = 1000;           % Population Size (Swarm Size)
 params.w = 1;               % Intertia Coefficient
 params.wdamp = 1;        % Damping Ratio of Inertia Coefficient
 params.c1 = 2;              % Personal Acceleration Coefficient
@@ -157,152 +177,67 @@ title('Light Stimulus Over Neural Population'); %legend('Inhibitory','Excitatory
 
 %% Functions
 
-function [z,Neuron_Activated] = MotionRatio_MS(ec,NumNeurons,Directional_Current_Mult,neuron)
+function z = MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype) % Cost
 % z = solution to be minimzied
 % ec = all electrode variables
+ec = electrodestim(1:100); % Electrical stimulation values
+eo = zeros(100,1);
+
+
+% Electrical / Optical Field Summation
+
 ElectrodeNo = 1:length(ec);
 Ie_Axon_Neurons = zeros(NumNeurons,1); % Initialize current vector
 Ie_Soma_Neurons = zeros(NumNeurons,1);
-lambda_needed_RS = 29.0; % Value determined experimentally
-lambda_needed_FS= 53.0; % % Value determined experimentally
+Il_Soma_Neurons = zeros(NumNeurons,1); % Initialize luminous intensity
 
 for i = 1:length(ec) % Summation of current for every neuron component by every electrode & its corresponding current
     Ie_Axon_Neurons = Ie_Axon_Neurons + neuron.io.axon(:,ElectrodeNo(i)).*ec(i);
-    Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*ec(i).*Directional_Current_Mult(:,ElectrodeNo);
+    Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*ec(i).*neuron.dirmult(:,i);
+    Il_Soma_Neurons = Il_Soma_Neurons + neuron.oo.soma(:,ElectrodeNo(i)).*eo(i);
 end
 
-Ie_Soma_Axon_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons
+Ie_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons.
+Il_Neurons = Il_Soma_Neurons; % Summation of luminous intensity directly from stimulus.
 
-% Multiplier Matrices
-FS_Lambda = 40; % Fast Spiking Neurons, Inhibitory
-RS_Lambda = 20; % Regular Spiking Neurons, Excitory
-Inhibitory_Factor = 0.01;
+% Calculate Lambda Hat
+[lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,neuron.inhibitoryfactor,lambdatype);
 
-Lambda_Hat = zeros(NumNeurons,1); % Probability change due to current injection
-
-for i = 1:NumNeurons
-    if neuron.type(i) == 1 % If it is an FS (Inhibitory)
-        Lambda_Hat(i) = FS_Lambda + (FS_Lambda * Ie_Soma_Axon_Neurons(i)); % Lambda_Hat firing rate based off microstimulation
-    end
+if lambdatype == 3
+    [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,neuron.inhibitoryfactor,2);
+    lambdahat = neuron.mslambdahat + (lambdahat - neuron.lambda);
+elseif lambdatype == 4
+    [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,neuron.inhibitoryfactor,2);
+    lambdahat = neuron.mslambdahat - (lambdahat - neuron.lambda);
 end
 
-Inhibitory_Effect = zeros(length(neuron.inhibitory),1);
-for i = 1:length(neuron.inhibitory)
-    Inhibitory_Effect(i) = Lambda_Hat(neuron.inhibitory(i)).*Inhibitory_Factor; % Calculates the inhibitory effect from FS firing on RS neurons per motif
-end
+% neuron activation
+NumTrials = 100;
+simulation = 1;
+dt = 1/1000;
+bpct = .05;
 
-for i = 1:NumNeurons % Applying inhibitory factor to firing rates of RS Neurons
-    if neuron.type(i) == 2
-        Lambda_Hat(i) = (RS_Lambda + (RS_Lambda * Ie_Soma_Axon_Neurons(i))) - Inhibitory_Effect(neuron.motif(i)); % Lambda hat firing rate based off stimulation & Inhibitory effect
-    else
-        % Inhib Neurons do not inhib themselves
-    end
-end
+% for i = 1:NumNeurons
+%      output(1,i) = Simple_PoissonGen2(lambdahat(i), dt, NumTrials,simulation,bpct); % Calculate Lambda
+% end
+% Neuron_Activated = output > neuron.lambda+1;
 
+% TEST METHOD ONLY:
 Neuron_Activated = zeros(NumNeurons,1);
-Neuron_Activated(neuron.excitatory) = Lambda_Hat(neuron.excitatory) > lambda_needed_RS;
-Neuron_Activated(neuron.inhibitory) = Lambda_Hat(neuron.inhibitory) > lambda_needed_FS;
+Neuron_Activated(neuron.excitatory) = lambdahat(neuron.excitatory) > neuron.threshold.rs;
+Neuron_Activated(neuron.inhibitory) = lambdahat(neuron.inhibitory) > neuron.threshold.fs;
 
-a = sum(Neuron_Activated(neuron.motion.number));
-b = sum(Neuron_Activated(neuron.nonMotion.number));
+% Ratio Calculation
+
+a = sum(Neuron_Activated(neuron.motion.number)); % Number active motion-tuned = activated - inactivated
+b = sum(Neuron_Activated(neuron.nonmotion.number)); % Number of active non-motion = activated - inactivated
 
 if a >= length(neuron.motion.number)*.25 % If activated motion-tuned is less than threshold to create percept, ratio is no good
-    z = b/a; % Minimize # non-motion tuned
-else
-    z = inf; % If minimum # of motion is not achieved, this is not a good solution
-end
-
-end
-
-function z = MotionRatio_Opto(eo,Opto_Thresh,I0_Motion,I0_NonMotion,Activated_Motion,Activated_NonMotion,neuron)
-% z = solution to be minimzied
-% eo = all electrode variables
-
-Opto_Motion = zeros(Activated_Motion,1); % Initialize opto stimulus
-Opto_NonMotion = zeros(Activated_NonMotion,1); % Initialize opto stimulus
-
-for i = 1:length(eo) % Summation of stimulus for every neuron by every electrode distance & its corresponding stimulus
-    Opto_Motion = Opto_Motion + I0_Motion(:,i).*eo(i);
-    Opto_NonMotion = Opto_NonMotion + I0_NonMotion(:,i).*eo(i);
-end
-
-
-a = Activated_Motion - sum(Opto_Motion > Opto_Thresh); % Number active motion-tuned = activated - inactivated
-b = Activated_NonMotion - sum(Opto_NonMotion > Opto_Thresh); % Number of active non-motion = activated - inactivated
-
-if a >= length(neuron.motion.number)*.20 % If activated motion-tuned is less than threshold to create percept, ratio is no good
-    z = b/a;
+    z = b/a; % Ratio of what we don't want to activate over what we want to activate
 else
     z = inf;
 end
 
-end
-
-function [Lambda,Lambda_Hat] = Lambda_Hat_Gen(BestSol_MS,BestSol_Opto,NumNeurons,Directional_Current_Mult,neuron)
-
-% ec = all electrode current variables
-% eo = all electrode light variables
-ec = BestSol_MS.Position;
-eo = BestSol_Opto.Position;
-
-ElectrodeNo = 1:length(ec);
-Ie_Axon_Neurons = zeros(NumNeurons,1); % Initialize current vector
-Ie_Soma_Neurons = zeros(NumNeurons,1);
-lambda_needed_RS = 29.0; % Value determined experimentally
-lambda_needed_FS= 53.0; % % Value determined experimentally
-
-for i = 1:length(ec) % Summation of current for every neuron component by every electrode & its corresponding current
-    Ie_Axon_Neurons = Ie_Axon_Neurons + neuron.io.axon(:,ElectrodeNo(i)).*ec(i);
-    Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*ec(i).*Directional_Current_Mult(:,ElectrodeNo);
-end
-
-Ie_Soma_Axon_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly from stimulus + backpropogated up by axons
-
-% Multiplier Matrices
-FS_Lambda = 40; % Fast Spiking Neurons, Inhibitory
-RS_Lambda = 20; % Regular Spiking Neurons, Excitory
-Inhibitory_Factor = 0.01;
-
-Lambda = zeros(NumNeurons,1);
-Lambda(neuron.excitatory) = RS_Lambda;
-lambda(neuron.inhibitory) = FS_Lambda;
-
-Lambda_Hat = zeros(NumNeurons,1); % Probability change due to current injection
-
-for i = 1:NumNeurons
-    if neuron.type(i) == 1 % If it is an FS (Inhibitory)
-        Lambda_Hat(i) = FS_Lambda + (FS_Lambda * Ie_Soma_Axon_Neurons(i)); % Lambda_Hat firing rate based off microstimulation
-    end
-end
-
-Inhibitory_Effect = zeros(length(neuron.inhibitory),1);
-for i = 1:length(neuron.inhibitory)
-    Inhibitory_Effect(i) = Lambda_Hat(neuron.inhibitory(i)).*Inhibitory_Factor; % Calculates the inhibitory effect from FS firing on RS neurons per motif
-end
-
-for i = 1:NumNeurons % Applying inhibitory factor to firing rates of RS Neurons
-    if neuron.type(i) == 2
-        Lambda_Hat(i) = (RS_Lambda + (RS_Lambda * Ie_Soma_Axon_Neurons(i))) - Inhibitory_Effect(neuron.motif(i)); % Lambda hat firing rate based off stimulation & Inhibitory effect
-    else
-        % Inhib Neurons do not inhib themselves
-    end
-end
-
-Opto_Thresh = 1;
-Opto_Stim = zeros(NumNeurons,1); % Initialize opto stimulus
-
-for i = 1:length(eo) % Summation of stimulus for every neuron by every electrode distance & its corresponding stimulus
-    Opto_Stim = Opto_Stim + neuron.io.soma(:,i).*eo(i);
-end
-
-for i = 1:NumNeurons
-    if Opto_Stim(i) >= Opto_Thresh
-        Lambda_Hat(i) = 0;
-    end
-end
-
-Lambda_Hat(Lambda_Hat > 500) = 500;
-Lambda_Hat(Lambda_Hat < 0) = 0;
 end
 
 function [grad,im]=colorGradient(c1,c2,depth)

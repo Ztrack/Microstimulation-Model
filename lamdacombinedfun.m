@@ -39,6 +39,7 @@ end
 % Ensuring a firing rate limit is applied
 limit = 300;
 lambdahat(lambdahat>limit) = limit;
+lambdahat(lambdahat<0) = 0;
 
 % Calculating Inhibition effect on each motif. Rate-based calculation
 % Effect = summation of (new-old)*factor for each inhibitory in motif

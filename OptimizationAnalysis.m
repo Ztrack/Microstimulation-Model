@@ -2,7 +2,7 @@ clc; clear; close all;
 load('InitialConditionsFull.mat');
 
 n = 0.5; % Percent activation to count as 'activated'
-x = 10; % The current/opto step must activate this many motion tuned neurons to store the step
+x = 100; % The current/opto step must activate this many motion tuned neurons to store the step
 load('SEoutputc.mat');
 threshold.c = thresholdfun(output,units,n,x);
 load('SEoutputo.mat');
@@ -12,34 +12,113 @@ threshold.o = thresholdfun(output,units,n,x);
 neuron.inhibitoryfactor = 0.01;
 neuron.threshold.rs = 29.0; % Value determined for 95%, used in testing
 neuron.threshold.fs = 53.0; % % Value determined for 95%, used in testing
+neuron.lambda = zeros(NumNeurons,1);
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 
 % lambdatype:
-lambdatype = 1; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
+lambdatype = 3; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
+
+
+%% PSO
+
+if lambdatype == 1
+    
+    problem.nVar = 100;
+    problem.VarMax = [threshold.c]*.10';
+    
+elseif lambdatype == 2
+    
+    problem.nVar = 100;
+    problem.VarMax = [threshold.o]';
+    
+else
+    
+    problem.nVar = 200;
+    problem.VarMax = [threshold.c*.10 threshold.o]';
+    
+end
+
+problem.CostFunction = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype); % Cost
+problem.VarMin =  zeros(problem.nVar,1);
+
+% Parameters of PSO
+params.MaxIt = 50;        % Maximum Number of Iterations
+params.AdaptiveItMax = 20; % Max number of adaptive iterations
+params.AdaptiveItThreshold = .01; % if the absolute value of it - (it-1) is less than this, we say there is little enough change to end the search
+params.nPop = 100;           % Population Size (Swarm Size)
+params.w = 1;               % Intertia Coefficient
+params.wdamp = .99;        % Damping Ratio of Inertia Coefficient
+params.c1 = 5;              % Personal Acceleration Coefficient
+params.c2 = 5;              % Social Acceleration Coefficient
+params.ShowIterInfo = true; % Flag for Showing Iteration Informatin
+
+out = PSOFunction2(problem, params);
 
 %% Matlab PSO options
 rng default  % For reproducibility
-fun = @(x) MotionRatioCombined(x,NumNeurons,neuron,lambdatype);
-nvars = 200;
-lb = zeros(1,nvars);
-ub = [threshold.c threshold.o];
-options = optimoptions('particleswarm','SwarmSize',100,'UseParallel',true,'display','iter');
 
-%% Matlab PSO Once
-[x,fval,exitflag,output] = particleswarm(fun,nvars);
+if lambdatype == 1
+    nvars = 100;
+    lb = zeros(1,nvars);
+    ub = [threshold.c]*.10;
+    
+elseif lambdatype == 2
+    nvars = 100;
+    lb = zeros(1,nvars);
+    ub = [threshold.o];
+    
+else
+    
+    nvars = 200;
+    lb = zeros(1,nvars);
+    ub = [threshold.c*.1 threshold.o];
+end
+
+fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype);
+options = optimoptions('particleswarm','SwarmSize',1000,'UseParallel',true,'display','iter');
+
+%% Matlab PSO Once matlab
+%ub = [];
+[x,fval,exitflag,output] = particleswarm(fun,nvars,lb,ub,options);
 
 %% Matlab PSO Iterative
 
-options = optimoptions('particleswarm','SwarmSize',100,'UseParallel',true,'display','off');
-numrepeats = 30;
-for i = 1:4
+options = optimoptions('particleswarm','SwarmSize',2000,'UseParallel',true,'display','off');
+numrepeats = 5;
+CostsCurve = nan(7,numrepeats);
+
+for i = 1:7
     
     lambdatype = i;
-    fun = @(x) MotionRatioCombined(x,NumNeurons,neuron,lambdatype);
+    fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype);
+    if lambdatype == 1
+        nvars = 100;
+        lb = zeros(1,nvars);
+        ub = [threshold.c]*.10;
+        
+    elseif lambdatype == 2
+        nvars = 100;
+        lb = zeros(1,nvars);
+        ub = [threshold.o];
+        
+    else
+        
+        nvars = 200;
+        lb = zeros(1,nvars);
+        ub = [threshold.c*.1 threshold.o];
+    end
+    %ub = [];
     for ii = 1:numrepeats
+        
         [x,fval,exitflag,output] = particleswarm(fun,nvars,lb,ub,options);
-        CostsCurve(i,ii,:) = fval;
+        
+        CostsCurve(i,ii) = fval;
+        sol.type(i).repeat(ii).x = x;
+        if nanmin(CostsCurve(i,:)) == fval % IF its the minimum for this set
+            sol.type(i).bestx = x; % Save the solution
+        end
+        
     end
     
 end
@@ -57,7 +136,7 @@ for i = 1:5:250
         for ii = 1:4
             
             lambdatype = ii;
-            fun = @(x) MotionRatioCombined(x,NumNeurons,neuron,lambdatype);
+            fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype);
             for iii = 1:numrepeats
                 [x,fval,exitflag,output] = particleswarm(fun,nvars,lb,ub,options);
                 CostsCurve(ii,iii,:) = fval;
@@ -71,20 +150,50 @@ end
 CostsCurve(CostsCurve == inf) = NaN;
 CostsCurve(CostsCurve == 0) = NaN;
 figure;
-for i = 1:4
+for i = 1:size(CostsCurve,1)
+    x = i;
     y = squeeze(nanmean(CostsCurve(i,:,:),2));
     yerr = squeeze(1.96.*nanstd(CostsCurve(i,:,:))/sqrt(numrepeats));
-    errorbar(y,yerr);
+    errorbar(x,y,yerr);
     hold on;
 end
-xlabel('Iteration Number');
+xlim([0 8]);
+ylim([0 6]);
+xlabel('Lambda Calculation Type');
 ylabel('Non-Motion / Motion Neuron Ratio');
 title('Optimization Performance');
 legend('MS','Opto','MS + Opto (+all)','MS + Opto (-all)');
+
+%% Plotting electrode stim maps
+
+stimmap = zeros(4800,4800);
+type = 1;
+for i = 1:length(electrode.x)
+    electrodemap = zeros(4800,4800);
+    electrodemap(electrode.y(i)-electrode.radii:electrode.y(i)+electrode.radii,electrode.x(i)-electrode.radii:electrode.x(i)+electrode.radii) = 1;
+    electrodemap = bwdist(electrodemap) + electrodemap;
+    electrodemap = sol.type(type).bestx(i)./electrodemap;
+    stimmap = stimmap + electrodemap;
+    
+end
+map = [1 1 1];
+figure; imagesc(stimmap); set(gca,'YDir','normal');
+hold on;
+[y1,x1] = ind2sub([sx sy],population.inhibitory.indices); % Inhibitory
+[y2,x2] = ind2sub([sx sy],population.excitatory.indices); % Non-Motion Excitatory
+[y3,x3] = ind2sub([sx sy],population.motion.indices); % Motion
+[y4,x4] = ind2sub([sx sy],population.axon.indices); % Axons
+plot(x4,y4,'.','color','Black')
+hold on
+plot(x1,y1,'.','color','red'); hold on; 
+plot(x2,y2,'.','color','Blue'); hold on;
+plot(x3,y3,'.','color','Green'); hold on;
+
 %% Simulated Annealing
 % https://www.mathworks.com/help/gads/simulannealbnd.html
-
-x = simulannealbnd(fun,x0,lb,ub)
+options = optimoptions('simulannealbnd','display','iter');
+x0 = ones(200,1);
+[x,fval,exitflag,output] = simulannealbnd(fun,x0,lb,ub,options)
 
 %% Direct Search
 % https://www.mathworks.com/help/gads/patternsearch.html
@@ -92,13 +201,31 @@ A = [];
 b = [];
 Aeq = [];
 beq = [];
-x = patternsearch(fun,x0,A,b,Aeq,beq,lb,ub)
+lb = zeros(200,1);
+ub = [];
+nonlcon = [];
+x0 = ones(200,1);
+ub1 = [threshold.c threshold.o];
+%x0 = ub1.*rand(1,200);
+
+
+options = optimoptions('patternsearch','display','iter');
+[x,fval,exitflag,output] = patternsearch(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon,options)
+
 %% Functions
-function z = MotionRatioCombined(x,NumNeurons,neuron,lambdatype) % Cost
+function z = MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype) % Cost
 % z = solution to be minimzied
 % ec = all electrode variables
-ec = x(1:100); % Electrical stimulation values
-eo = x(101:200); % Electrode optical stimulation values
+if lambdatype == 1
+    ec = electrodestim(1:100); % Electrical stimulation values
+    eo = zeros(100,1);
+elseif lambdatype == 2
+    ec = zeros(100,1);
+    eo = electrodestim(1:100); % Electrode optical stimulation value
+else
+    ec = electrodestim(1:100); % Electrical stimulation values
+    eo = electrodestim(101:200); % Electrode optical stimulation values
+end
 
 % Electrical / Optical Field Summation
 
