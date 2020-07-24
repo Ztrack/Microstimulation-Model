@@ -2,7 +2,7 @@ clc; clear; close all;
 load('InitialConditionsFull.mat');
 
 n = 0.5; % Percent activation to count as 'activated'
-x = 100; % The current/opto step must activate this many motion tuned neurons to store the step
+x = 25; % The current/opto step must activate this many motion tuned neurons to store the step
 load('SEoutputc.mat');
 threshold.c = thresholdfun(output,units,n,x);
 load('SEoutputo.mat');
@@ -25,7 +25,7 @@ lambdatype = 3; % 3 = MS + Optogenetics (all excitatory - affects all cells indi
 if lambdatype == 1
     
     problem.nVar = 100;
-    problem.VarMax = [threshold.c]*.10';
+    problem.VarMax = [threshold.c]';
     
 elseif lambdatype == 2
     
@@ -35,7 +35,7 @@ elseif lambdatype == 2
 else
     
     problem.nVar = 200;
-    problem.VarMax = [threshold.c*.10 threshold.o]';
+    problem.VarMax = [threshold.c threshold.o]';
     
 end
 
@@ -56,23 +56,22 @@ params.ShowIterInfo = true; % Flag for Showing Iteration Informatin
 out = PSOFunction2(problem, params);
 
 %% Matlab PSO options
-rng default  % For reproducibility
 
 if lambdatype == 1
     nvars = 100;
     lb = zeros(1,nvars);
-    ub = [threshold.c]*.10;
+    ub = [threshold.c].*.1;
     
 elseif lambdatype == 2
     nvars = 100;
     lb = zeros(1,nvars);
-    ub = [threshold.o];
+    ub = [threshold.o]*.01;
     
 else
     
     nvars = 200;
     lb = zeros(1,nvars);
-    ub = [threshold.c*.1 threshold.o];
+    ub = [threshold.c*.1 threshold.o*.01];
 end
 
 fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype);
@@ -84,18 +83,18 @@ options = optimoptions('particleswarm','SwarmSize',1000,'UseParallel',true,'disp
 
 %% Matlab PSO Iterative
 
-options = optimoptions('particleswarm','SwarmSize',2000,'UseParallel',true,'display','off');
-numrepeats = 5;
-CostsCurve = nan(7,numrepeats);
+options = optimoptions('particleswarm','SwarmSize',1000,'UseParallel',true,'display','off');
+numrepeats = 3;
+CostsCurve = nan(5,numrepeats);
 
-for i = 1:7
+for i = 1:5
     
     lambdatype = i;
     fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype);
     if lambdatype == 1
         nvars = 100;
         lb = zeros(1,nvars);
-        ub = [threshold.c]*.10;
+        ub = [threshold.c]*.1;
         
     elseif lambdatype == 2
         nvars = 100;
@@ -111,7 +110,7 @@ for i = 1:7
     %ub = [];
     for ii = 1:numrepeats
         
-        [x,fval,exitflag,output] = particleswarm(fun,nvars,lb,ub,options);
+        [x,fval,~,~] = particleswarm(fun,nvars,lb,ub,options);
         
         CostsCurve(i,ii) = fval;
         sol.type(i).repeat(ii).x = x;
@@ -162,7 +161,7 @@ ylim([0 6]);
 xlabel('Lambda Calculation Type');
 ylabel('Non-Motion / Motion Neuron Ratio');
 title('Optimization Performance');
-legend('MS','Opto','MS + Opto (+all)','MS + Opto (-all)');
+legend('MS','Opto','MS + Opto (+all)','MS + Opto (-all)','MS + Opto (+all) + Opto (-all)');
 
 %% Plotting electrode stim maps
 
@@ -201,11 +200,11 @@ A = [];
 b = [];
 Aeq = [];
 beq = [];
-lb = zeros(200,1);
+lb = zeros(100,1);
 ub = [];
 nonlcon = [];
-x0 = ones(200,1);
-ub1 = [threshold.c threshold.o];
+x0 = rand(1,100).*threshold.o;
+ub1 = [threshold.o];
 %x0 = ub1.*rand(1,200);
 
 
@@ -216,6 +215,7 @@ options = optimoptions('patternsearch','display','iter');
 function z = MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype) % Cost
 % z = solution to be minimzied
 % ec = all electrode variables
+
 if lambdatype == 1
     ec = electrodestim(1:100); % Electrical stimulation values
     eo = zeros(100,1);
@@ -257,7 +257,7 @@ bpct = .05;
 % end
 % Neuron_Activated = output > neuron.lambda+1;
 
-% TEST METHOD ONLY:
+% Threshold Method:
 Neuron_Activated = zeros(NumNeurons,1);
 Neuron_Activated(neuron.excitatory) = lambdahat(neuron.excitatory) > neuron.threshold.rs;
 Neuron_Activated(neuron.inhibitory) = lambdahat(neuron.inhibitory) > neuron.threshold.fs;

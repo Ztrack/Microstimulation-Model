@@ -97,7 +97,7 @@ for kkk = 1:2
                 % Finding RB for each neuron
                 
                 for i = 1:NumNeurons
-                    if isnan(Neuron_RB1(i)) % If RB does not exist, continue, otherwise this neuron is skipped
+                    if isnan(Neuron_RB1(i))| homogeneous == 0 % If RB does not exist, continue, otherwise this neuron is skipped
                         
                         Lambda_Hat_Spikes = Simple_PoissonGen(lambdahat(i), dt, NumTrials);
                         Y = prctile(Lambda_Hat_Spikes,bpct); % Calculates bottom xth percentile

@@ -73,7 +73,7 @@ parfor j = 1:100 % Iterate every electrode
         % Calculate Poisson spike rates for each neuron
         for ii = 1:NumNeurons
             if BestNeurons(ii) == 1
-                y = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct)zz > neuron.lambda(ii)+1; % Calculate Lambda
+                y = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct) > neuron.lambda(ii)+1; % Calculate Lambda
                 output1(i,ii) = sum(y);
                 %outputactivated(ii) = sum(y) >= simulation.*(.5); % Useful for debugging
             end

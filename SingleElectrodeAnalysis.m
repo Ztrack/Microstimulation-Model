@@ -57,13 +57,7 @@ options.line_width = 2;
 options.error = 'c95';
 options.legendswitch = 0; % Legend 0 = off, 1 = on
 options.legend = [];
-%%
-%Neuron_RB = solrb.o1;
-%options.x_axis = solrb.o.I0;
-Neuron_RB = solrb.e1;
-options.x_axis = solrb.e.I0;
-
-currentstop = 0;
+%% Current Solution Plots
 
 options.handle     = figure; set(gcf,'Position',[000 000 800 700]);
 options.color_area = [0 128 0]./255; % Green : All Neurons
@@ -134,6 +128,82 @@ options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerror
 options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerrorbar(squeeze(Cumulative_Activation(j,:,:)),options); hold on; j = j+1;
 options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerrorbar(squeeze(Cumulative_Activation(j,:,:)),options); hold on; j = j+1;
 title('Pad Activation Through Center Electrode'); xlabel('Current (mA)'); ylabel('Percentage Activated Neurons'); 
+legend('','Middle Pad','','1 Pad Away','','1.5 Pads Away','','2 Pads Away','','2.5 Pads Away');
+ylim([0 100]); 
+%xlim([0 currentstop/h]);
+hold off
+
+%% Optogenetics Solution Plots
+
+options.handle     = figure; set(gcf,'Position',[000 000 800 700]);
+options.color_area = [0 128 0]./255; % Green : All Neurons
+plot_areaerrorbar(stepsol.opto.all,options); title('Neuron Activation Through Center Electrode'); xlabel('Irradiance mW/mm^2'); ylabel('Percentage Activated Neurons');
+ylim([0 100]);
+%xlim([0 currentstop/h]);
+hold off
+
+options.handle     = figure; set(gcf,'Position',[000 000 800 700]);
+options.color_area = [0 0 255]./255; % Blue : Excitatory
+plot_areaerrorbar(stepsol.opto.excitatory,options); title('Neuron Activation Through Center Electrode'); xlabel('Irradiance mW/mm^2'); ylabel('Percentage Activated Neurons');
+hold on
+options.color_area = [255 0 0]./255; % Red : Inhibitory
+plot_areaerrorbar(stepsol.opto.inhibitory,options);
+title('Excitatory / Inhibitory Activation Through Center Electrode'); xlabel('Irradiance mW/mm^2'); ylabel('Percentage Activated Neurons');
+%xline(find(mean(stepsol.current.excitatory) >= 50,1),'color','blue'); xline(find(mean(stepsol.current.inhibitory) >= 50,1),'color','red'); 
+legend('','Excitatory','','Inhibitory','50% Excitatory','50% Inhibitory'); 
+ylim([0 100]);
+disp((find(mean(stepsol.opto.excitatory) >= 50,1)-(find(mean(stepsol.opto.inhibitory) >= 50,1)))*50);
+hold off
+
+options.handle     = figure; set(gcf,'Position',[000 000 800 700]);
+options.color_area = [0 128 0]./255; % Green : Motion
+plot_areaerrorbar(stepsol.opto.motion,options);
+hold on
+options.color_area = [255 165 0]./255; % Orange : Non-Motion
+plot_areaerrorbar(stepsol.opto.nonmotion,options);
+title('Motion Activation Through Center Electrode'); xlabel('Irradiance mW/mm^2'); ylabel('Percentage Activated Neurons'); 
+%xline(find(mean(stepsol.current.motion) >= 50,1),'color',[0 128 0]./255); xline(find(mean(stepsol.current.nonmotion) >= 50,1),'color',[255 165 0]./255);
+legend('','Motion','','Non-Motion','50% Motion','50% Non-Motion');
+ylim([0 100]);
+%xlim([0 currentstop/h]);
+disp((find(mean(stepsol.opto.motion) >= 50,1)-(find(mean(stepsol.opto.nonmotion) >= 50,1)))*50)
+hold off
+
+% Plot of % neurons activated for every pad
+
+for i = 1:NumPads
+    pad.numneurons(i) = sum(neuron.pad == i); % Sums number of neurons per pad
+end
+
+stepsol.opto.pads = zeros(NumPads,numrepeats,length(solrb.e.I0)); % Calculates the number of neurons excited at every step of opto
+for j = 1:NumPads
+for i = 1:length(solrb.e.I0)
+    stepsol.opto.pads(j,:,i) = sum(solrb.e1(:,neuron.pad == j)                          <=solrb.e.I0(i),2)*100/pad.numneurons(j);
+end
+end
+
+%Colormap for colors
+map = [0 0 0; 239 122 37; 81 182 106; 50 127 183; 152 85 159; 225 152 153;]./255; % Colormap. First number is 0, then 1 to 15.
+c1 = .85;
+c2 = .7;
+map = [map ; map(2,1:3)*c1 ; map(3,1:3)*c1 ; map(4,1:3)*c1 ; map(5,1:3)*c1 ; map(6,1:3)*c1];
+map = [map ; 1 1 1 ; map(3,1:3)*c2 ; map(4,1:3)*c2 ; map(5,1:3)*c2 ; map(6,1:3)*c2];
+
+% Cumulative pad summation
+pad.away(1).num = 8; Cumulative_Activation(1,:,:) = stepsol.opto.pads(pad.away(1).num,:,:); % 0 pads away
+pad.away(2).num = [7 9 3 13]; Cumulative_Activation(2,:,:) = mean(stepsol.opto.pads(pad.away(2).num,:,:)); % 1 pads away
+pad.away(3).num = [2 4 12 14]; Cumulative_Activation(3,:,:) = mean(stepsol.opto.pads(pad.away(3).num,:,:)); % 1.5 pads away
+pad.away(4).num = [6 10]; Cumulative_Activation(4,:,:) = mean(stepsol.opto.pads(pad.away(4).num,:,:)); % 2 pads away
+pad.away(5).num = [1 5 11 15]; Cumulative_Activation(5,:,:) = mean(stepsol.opto.pads(pad.away(5).num,:,:)); % 2.5 pads away
+
+%Plotting figure for cumulative pad summation
+options.handle     = figure; set(gcf,'Position',[000 000 800 700]); j = 1;
+options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerrorbar(squeeze(Cumulative_Activation(j,:,:)),options); hold on; j = j+1;
+options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerrorbar(squeeze(Cumulative_Activation(j,:,:)),options); hold on; j = j+1;
+options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerrorbar(squeeze(Cumulative_Activation(j,:,:)),options); hold on; j = j+1;
+options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerrorbar(squeeze(Cumulative_Activation(j,:,:)),options); hold on; j = j+1;
+options.color_area = map(j+1,:); options.color_line = map(j+1,:); plot_areaerrorbar(squeeze(Cumulative_Activation(j,:,:)),options); hold on; j = j+1;
+title('Pad Activation Through Center Electrode'); xlabel('Irradiance mW/mm^2'); ylabel('Percentage Activated Neurons'); 
 legend('','Middle Pad','','1 Pad Away','','1.5 Pads Away','','2 Pads Away','','2.5 Pads Away');
 ylim([0 100]); 
 %xlim([0 currentstop/h]);

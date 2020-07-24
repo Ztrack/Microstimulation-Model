@@ -8,10 +8,11 @@ function [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,inhibitoryf
 % 2 = opto only
 % 3 = MS + Optogenetics (all excitatory - affects all cells)
 % indiscriminately)
-% 4 = MS + Optogenetics (all silencing - affects all cells indiscriminately),
-% 5 = MS + Optogenetics (only express excitatory opsin in inhibitory neurons)
-% 6 = MS + Optogenetics (express excitatory opsin in inhibitory neurons & express inhibitory opsin in excitatory neurons)
-% 7 = MS + Optogenetics (Express excitatory opsin in excitatory cells +
+% 4 = MS + Optogenetics (all silencing - affects all cells indiscriminately
+% 5 = MS+Opto(+all 50%) - opto(-all not bounded)
+% 6 = MS + Optogenetics (only express excitatory opsin in inhibitory neurons)
+% 7 = MS + Optogenetics (express excitatory opsin in inhibitory neurons & express inhibitory opsin in excitatory neurons)
+% 8 = MS + Optogenetics (Express excitatory opsin in excitatory cells +
 % express inhibitory opsin in all cells indiscriminately)
 
 % Calculating Lambda hat based off microstimulation
@@ -24,13 +25,16 @@ elseif lambdatype == 3
 elseif lambdatype == 4
     lambdahat = neuron.lambda + frc - fro; % MS - opto for all
 elseif lambdatype == 5
+    lambdahat = neuron.lambda + frc; % MS
+    lambdahat = neuron.lambda + frc + fro - fro;
+elseif lambdatype == 6
     lambdahat = neuron.lambda + frc; % MS 
     lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + fro(neuron.inhibitory); % Optogenetics excitatory opsin for inhibitory
-elseif lambdatype == 6
+elseif lambdatype == 7
     lambdahat = neuron.lambda + frc; % MS
     lambdahat(neuron.inhibitory) = lambdahat(neuron.inhibitory) + fro(neuron.inhibitory); % Optogenetics excitatory opsin for inhibitory
     lambdahat(neuron.excitatory) = lambdahat(neuron.excitatory) - fro(neuron.excitatory); % Optogenetics inhibitory opsin for excitatory
-elseif lambdatype == 7
+elseif lambdatype == 8
     lambdahat = neuron.lambda + frc; % MS
     lambdahat = lambdahat - fro; % Inhibitory opsin in all cells
     lambdahat(neuron.excitatory) = lambdahat(neuron.excitatory) + fro(neuron.excitatory); % Excitatory opsin in excitatory neurons
