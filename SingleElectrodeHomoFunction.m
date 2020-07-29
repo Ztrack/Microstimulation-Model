@@ -27,7 +27,7 @@ end
 % Parameters
 bpct = 05; % Bottom Percentile for Rheobase calculation. 50 for 50%, 05 for 95% CI.
 NumTrials = 50; % Number of trials per poisson process
-simulation = 2000; % Number of overall repeats for monte carle simulation
+simulation = 100; % Number of overall repeats for monte carle simulation
 inhibitoryfactor = 0.01; % at rate = 40hz (for inhibitory), there is a X% inhibition factor active. This increases linearly with lambda.
 neuron.lambda = zeros(NumNeurons,1);
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
@@ -42,7 +42,7 @@ neuron.adapt.lambdahomo(i,neuron.inhibitory,:) = repmat(mean(nonhomoPoissonGen(n
 neuron.adapt.lambdahomo(i,neuron.excitatory,:) = repmat(mean(nonhomoPoissonGen(neuron.lambda(2), dt, NumTrials,simulation,bpct,neuron.adapt.ratefunction(i,:)),1),size(neuron.excitatory,2),1); % Sum of these numbers = input lambda, or close to
 end
 %% Loop Start
-h = 50; % number of steps for current/LI
+h = 200; % number of steps for current/LI
 
 % if lambdatype == 1
 %     unitsmax = 30000; % Point at which 100% of neurons are activated
@@ -56,6 +56,7 @@ h = 50; % number of steps for current/LI
 
 
 ElectrodeNo = 45; % Number of the electrode, 45 = center
+numrepeats = 3;
 
 for j = 1:2
     
@@ -68,11 +69,11 @@ for j = 1:2
         unitsmax = .0025;
     end
     units = linspace(unitsmin,unitsmax,h);
-    output = zeros(h,NumNeurons,10); % Stores poisson spike rate for every output, logical matrix
+    output = zeros(h,NumNeurons,numrepeats,10); % Stores poisson spike rate for every output, logical matrix
     
     parfor i = 1:length(units)
         
-        output1 = zeros(NumNeurons,10);
+        output1 = zeros(NumNeurons,numrepeats,10);
         Ie_Neurons = neuron.io.soma(:,ElectrodeNo).*neuron.dirmult(:,ElectrodeNo).*units(i) + neuron.io.axon(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus + backpropogated up by axons. AU Current
         Il_Neurons = neuron.oo.soma(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus. AU luminous intensity
         
@@ -81,12 +82,16 @@ for j = 1:2
         
         % Calculate Poisson spike rates for each neuron
         for ii = 1:NumNeurons
-            y = nonhomoPoissonGen(lambdahat(ii), dt, NumTrials,simulation,bpct,neuron.adapt.ratefunction(neuron.adapt.type(ii),:)) > neuron.adapt.lambdahomo(neuron.adapt.type(ii),ii,:)+1; % Calculate Lambda
-            output1(ii,:) = sum(y);
-            %outputactivated(ii) = sum(y) >= simulation.*(.5); % Useful for debugging
+            for iii = 1:numrepeats % Repetition
+                x = neuron.adapt.lambdahomo(neuron.adapt.type(ii),ii,:)+1;
+                x = reshape(x,1,10);
+                y = nonhomoPoissonGen(lambdahat(ii), dt, NumTrials,simulation,bpct,neuron.adapt.ratefunction(neuron.adapt.type(ii),:)); % Calculate Lambda
+                output1(ii,iii,:) = sum(y > x);
+                %outputactivated(ii) = sum(y) >= simulation.*(.5); % Useful for debugging
+            end
         end
         
-        output(i,:,:) = output1;
+        output(i,:,:,:) = output1;
         
     end
     

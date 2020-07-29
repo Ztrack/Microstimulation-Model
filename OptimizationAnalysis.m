@@ -17,7 +17,7 @@ neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 
 % lambdatype:
-lambdatype = 3; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
+lambdatype = 1; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
 
 
 %% PSO
@@ -60,26 +60,27 @@ out = PSOFunction2(problem, params);
 if lambdatype == 1
     nvars = 100;
     lb = zeros(1,nvars);
-    ub = [threshold.c].*.1;
+    ub = [threshold.c].*.5;
     
 elseif lambdatype == 2
     nvars = 100;
     lb = zeros(1,nvars);
-    ub = [threshold.o]*.01;
+    ub = [threshold.o]*.5;
     
 else
     
     nvars = 200;
     lb = zeros(1,nvars);
-    ub = [threshold.c*.1 threshold.o*.01];
+    ub = [threshold.c.*.5 threshold.o.*.5];
 end
 
 fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype);
-options = optimoptions('particleswarm','SwarmSize',1000,'UseParallel',true,'display','iter');
+options = optimoptions('particleswarm','SwarmSize',2000,'UseParallel',true,'display','iter');
 
 %% Matlab PSO Once matlab
 %ub = [];
 [x,fval,exitflag,output] = particleswarm(fun,nvars,lb,ub,options);
+
 
 %% Matlab PSO Iterative
 
@@ -210,6 +211,194 @@ ub1 = [threshold.o];
 
 options = optimoptions('patternsearch','display','iter');
 [x,fval,exitflag,output] = patternsearch(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon,options)
+
+%% Plot Iteration vs performance
+
+% Options for plotting
+options = struct;
+options.alpha      = 0.5;
+options.line_width = 2;
+options.error = 'c95';
+options.legendswitch = 0; % Legend 0 = off, 1 = on
+options.legend = [];
+
+options.handle     = figure; set(gcf,'Position',[000 000 800 700]);
+options.color_area = [0 128 0]./255; % Green
+plot_areaerrorbar(xsol1curve',options); 
+title('Stimulation Performance');
+xlabel('Iteration Number');
+ylabel('Non-Motion / Motion-Tuned Neuron Ratio');
+legend('Microstimulation');
+ylim([0 7]);
+hold off
+
+options.handle     = figure; set(gcf,'Position',[000 000 800 700]);
+plot_areaerrorbar(xsol1curve',options);
+hold on;
+options.color_area = [255 0 0]./255; % Red
+plot_areaerrorbar(xsol4curve',options);
+ylim([0 7]);
+hold off
+title('Stimulation Performance');
+xlabel('Iteration Number');
+ylabel('Non-Motion / Motion-Tuned Neuron Ratio');
+legend('Microstimulation','Microstimulation + Optogenetics');
+
+%% Plot Stimap
+stimmap = zeros(4800,4800); 
+sol = xsol1;
+for i = 1:length(electrode.x)
+    electrodemap = zeros(4800,4800);
+    electrodemap(electrode.y(i)-electrode.radii:electrode.y(i)+electrode.radii,electrode.x(i)-electrode.radii:electrode.x(i)+electrode.radii) = 1;
+    electrodemap = bwdist(electrodemap) + electrodemap;
+    electrodemap = sol(i)./electrodemap;
+    stimmap = stimmap + electrodemap;
+    
+end
+
+%grad=colorGradient([1 1 1],[0 0 1],128); map = [0 0 0; grad];
+grad=colorGradient([0 0 0],[1 1 1],2); map = [grad];
+figure; imagesc(stimmap); colormap(map); colorbar;
+set(gca,'YDir','normal'); set(gcf,'Position',[000 000 800 700]);
+hold on;
+[y1,x1] = ind2sub([sx sy],population.inhibitory.indices); % Inhibitory
+[y2,x2] = ind2sub([sx sy],population.excitatory.indices); % Non-Motion Excitatory
+[y3,x3] = ind2sub([sx sy],population.motion.indices); % Motion
+[y4,x4] = ind2sub([sx sy],population.axon.indices); % Axons
+plot(x4,y4,'.','color','Black')
+hold on
+plot(x1,y1,'.','color','red'); hold on; 
+plot(x2,y2,'.','color','Blue'); hold on;
+plot(x3,y3,'.','color','Green'); hold on;
+title('Stimulation Intensity Map');
+
+
+
+%%
+function plot_areaerrorbar(data, options)
+    options.color_line = options.color_area;
+    % Default options
+    if(nargin<2)
+        options.handle     = figure(1);
+        options.color_area = [128 193 219]./255;    % Blue theme
+        options.color_line = [ 52 148 186]./255;
+        %options.color_area = [243 169 114]./255;    % Orange theme
+        %options.color_line = [236 112  22]./255;
+        options.alpha      = 0.5;
+        options.line_width = 2;
+        options.error      = 'std';
+    end
+    if(isfield(options,'x_axis')==0), options.x_axis = 1:size(data,2); end
+    options.x_axis = options.x_axis(:);
+    
+    % Computing the mean and standard deviation of the data matrix
+    data_mean = mean(data,1);
+    data_std  = std(data,0,1);
+    
+    % Type of error plot
+    switch(options.error)
+        case 'std', error = data_std;
+        case 'sem', error = (data_std./sqrt(size(data,1)));
+        case 'var', error = (data_std.^2);
+        case 'c95', error = (data_std./sqrt(size(data,1))).*1.96;
+    end
+    
+    % Plotting the result
+    figure(options.handle);
+    x_vector = [options.x_axis', fliplr(options.x_axis')];
+    patch = fill(x_vector, [data_mean+error,fliplr(data_mean-error)], options.color_area);
+    set(patch, 'edgecolor', 'none');
+    set(patch, 'FaceAlpha', options.alpha);
+    hold on;
+    plot(options.x_axis, data_mean, 'color', options.color_line, ...
+        'LineWidth', options.line_width);
+    
+    if options.legendswitch == 1
+    legend(options.legend);
+    end
+    hold off;
+    
+end
+
+function [grad,im]=colorGradient(c1,c2,depth)
+% COLORGRADIENT allows you to generate a gradient between 2 given colors,
+% that can be used as colormap in your figures.
+%
+% USAGE:
+%
+% [grad,im]=getGradient(c1,c2,depth)
+%
+% INPUT:
+% - c1: color vector given as Intensity or RGB color. Initial value.
+% - c2: same as c1. This is the final value of the gradient.
+% - depth: number of colors or elements of the gradient.
+%
+% OUTPUT:
+% - grad: a matrix of depth*3 elements containing colormap (or gradient).
+% - im: a depth*20*3 RGB image that can be used to display the result.
+%
+% EXAMPLES:
+% grad=colorGradient([1 0 0],[0.5 0.8 1],128);
+% surf(peaks)
+% colormap(grad);
+%
+% --------------------
+% [grad,im]=colorGradient([1 0 0],[0.5 0.8 1],128);
+% image(im); %display an image with the color gradient.
+% Copyright 2011. Jose Maria Garcia-Valdecasas Bernal
+% v:1.0 22 May 2011. Initial release.
+%Check input arguments.
+%input arguments must be 2 or 3.
+error(nargchk(2, 3, nargin));
+%If c1 or c2 is not a valid RGB vector return an error.
+if numel(c1)~=3
+    error('color c1 is not a valir RGB vector');
+end
+if numel(c2)~=3
+    error('color c2 is not a valir RGB vector');
+end
+if max(c1)>1&&max(c1)<=255
+    %warn if RGB values are given instead of Intensity values. Convert and
+    %keep procesing.
+    warning('color c1 is not given as intensity values. Trying to convert');
+    c1=c1./255;
+elseif max(c1)>255||min(c1)<0
+    error('C1 RGB values are not valid.')
+end
+if max(c2)>1&&max(c2)<=255
+    %warn if RGB values are given instead of Intensity values. Convert and
+    %keep procesing.
+    warning('color c2 is not given as intensity values. Trying to convert');
+    c2=c2./255;
+elseif max(c2)>255||min(c2)<0
+    error('C2 RGB values are not valid.')
+end
+%default depth is 64 colors. Just in case we did not define that argument.
+if nargin < 3
+    depth=64;
+end
+%determine increment step for each color channel.
+dr=(c2(1)-c1(1))/(depth-1);
+dg=(c2(2)-c1(2))/(depth-1);
+db=(c2(3)-c1(3))/(depth-1);
+%initialize gradient matrix.
+grad=zeros(depth,3);
+%initialize matrix for each color. Needed for the image. Size 20*depth.
+r=zeros(20,depth);
+g=zeros(20,depth);
+b=zeros(20,depth);
+%for each color step, increase/reduce the value of Intensity data.
+for j=1:depth
+    grad(j,1)=c1(1)+dr*(j-1);
+    grad(j,2)=c1(2)+dg*(j-1);
+    grad(j,3)=c1(3)+db*(j-1);
+    r(:,j)=grad(j,1);
+    g(:,j)=grad(j,2);
+    b(:,j)=grad(j,3);
+end
+%merge R G B matrix and obtain our image.
+im=cat(3,r,g,b);
+end
 
 %% Functions
 function z = MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype) % Cost
