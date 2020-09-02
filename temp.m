@@ -1,3 +1,65 @@
+%% Updated Optogenetic Equation
+
+x = 0:.001:100;
+n = 0.82; % Hill coefficient
+Imax = 25.4; % Maximum FR
+k = 0.49; % half maximal light sensitivity
+
+
+y = Imax .* (x.^n ./(k.^n + x.^n));
+loglog(x,y);
+
+%%
+
+x = 0:0.01:4;
+t_const = .65; % = x(66), y(66) = 1.2043
+max = 1.5; % Probability density max
+y = max.*exp(-x/t_const);
+figure;
+plot(x,y);
+
+hold on;
+t_const = 2.96; % = x(297), y(297) = 0.5518
+y = max.*exp(-x/t_const);
+plot(x,y);
+
+
+
+%%
+
+figure;
+x = [0:.01:10]/2.65;
+y1 = normpdf(x,0.65/2.65,0.64/2.65);
+plot(x,y1)
+hold on;
+y2 = normpdf(x,2.96/2.65,2.52/2.65);
+plot(x,y2)
+legend('Pyramidal-Pyramidal','FS-Pyramidal');
+xlabel('Weight (%) Contribution');
+ylabel('Probability Density');
+
+% Create a vector of 1000 random values drawn from a normal distribution with a mean of 500 and a standard deviation of 5.
+a = 2.96;
+b = 2.52;
+y = a/2.96.*randn(1000,1) + b/2.96;
+y(y<0.01) = 0.01;
+
+figure;
+hist(y,20);
+xlabel('Weight (%) Contribution');
+ylabel('# Events');
+title('FS-Pyramidal');
+
+a = 0.65/2.96;
+b = 0.64/2.96;
+y = a/2.96.*randn(1000,1) + b/2.96;
+y(y<0.00) = 0.01;
+
+figure;
+hist(y,20);
+xlabel('Weight (%) Contribution');
+ylabel('# Events');
+title('Pyramidal-Pyramidal');
 %% Plot temporary
 
 % Options for plotting

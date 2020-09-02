@@ -27,20 +27,26 @@ end
 % Parameters
 bpct = 05; % Bottom Percentile for Rheobase calculation. 50 for 50%, 05 for 95% CI.
 NumTrials = 50; % Number of trials per poisson process
-simulation = 100; % Number of overall repeats for monte carle simulation
+simulation = 20; % Number of overall repeats for monte carle simulation
 inhibitoryfactor = 0.01; % at rate = 40hz (for inhibitory), there is a X% inhibition factor active. This increases linearly with lambda.
 neuron.lambda = zeros(NumNeurons,1);
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
+[~,lambdamod] = lamdacombinedfun(neuron,zeros(1,1000),zeros(1,1000),1);
 %% Lambda Homo Calc
 % Calculating the number of spikes in each region of time, to later analyze
 % if we reached +1 spikes within this region.
 
+
+neuron.adapt.lambdahomo = zeros(3,NumNeurons,10);
 for i = 1:3
-neuron.adapt.lambdahomo(i,:,:) = zeros(NumNeurons,10);
-neuron.adapt.lambdahomo(i,neuron.inhibitory,:) = repmat(mean(nonhomoPoissonGen(neuron.lambda(1), dt, NumTrials,simulation,bpct,neuron.adapt.ratefunction(i,:)),1),size(neuron.inhibitory,2),1); % Sum of these numbers = input lambda, or close to
-neuron.adapt.lambdahomo(i,neuron.excitatory,:) = repmat(mean(nonhomoPoissonGen(neuron.lambda(2), dt, NumTrials,simulation,bpct,neuron.adapt.ratefunction(i,:)),1),size(neuron.excitatory,2),1); % Sum of these numbers = input lambda, or close to
+    for ii = 1:NumNeurons
+
+        neuron.adapt.lambdahomo(i,ii,:) = mean(nonhomoPoissonGen(lambdamod(ii), dt, NumTrials,simulation,bpct,neuron.adapt.ratefunction(i,:)),1); % Sum of these numbers = input lambda, or close to
+
+    end
 end
+
 %% Loop Start
 h = 200; % number of steps for current/LI
 
@@ -63,12 +69,12 @@ for j = 1:2
     lambdatype = j;
     if lambdatype == 1
         unitsmin = 1;
-        unitsmax = 200000;
+        unitsmax = 50;
     else
         unitsmin = .0001;
-        unitsmax = .0025;
+        unitsmax = .04;
     end
-    units = linspace(unitsmin,unitsmax,h);
+    units = linspace(0,unitsmax,h);
     output = zeros(h,NumNeurons,numrepeats,10); % Stores poisson spike rate for every output, logical matrix
     
     parfor i = 1:length(units)
@@ -78,7 +84,7 @@ for j = 1:2
         Il_Neurons = neuron.oo.soma(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus. AU luminous intensity
         
         % Calculate neuron.lambda Change for poisson process
-        [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,inhibitoryfactor,lambdatype);
+        [lambdahat,lambdamod] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,lambdatype);
         
         % Calculate Poisson spike rates for each neuron
         for ii = 1:NumNeurons

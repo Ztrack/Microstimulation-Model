@@ -10,6 +10,7 @@ theta_threshold = 45; % angle difference threshold - If the neuron axon is out o
 
 % Population Properties
 NumNeurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
+numelectrodes = 36;
 NumNeuronsMotif = 5; % # of neurons in each motif
 NumInhibitoryMotif = 1; % # of inhibitory neurons in motif
 NumMotifs = NumNeurons/NumNeuronsMotif; % # Neuron in Motif.
@@ -40,37 +41,18 @@ neuron.inhibitory = find(neuron.type == 1); % Array with all inhibitory neurons
 neuron.excitatory = find(neuron.type == 2); % Array with all Excitatory neurons
 neuron.motion.number = sort(neuron.excitatory(randperm(length(neuron.excitatory),floor(length(neuron.excitatory)*NeuronMotionRatio)))); % Neurons selected for motion
 neuron.nonmotion.number = ones(NumNeurons,1); neuron.nonmotion.number(neuron.motion.number) = 0; neuron.nonmotion.number = find(neuron.nonmotion.number == 1); % Non-Motion neurons
-neuron.motion.direction = randi([1,2],[1,length(neuron.motion.number)]); % Gives every motion neuron an orientation 0 or 90 degrees
 
-
-% Coding_Probability = [10/26 4/24]; % Connection Probability, given by Ko et al 2011
-% Directional_Probability = [.1 .1; .4 .1]; % Unidirectional 0 degrees = 10%, 90 degrees = 10% ; Bidirectional 0 degrees = 40%, 90 degrees = 10%
-% Neuron_Connected = []; k =1;
-% for i = 1:length(neuron.motion.number)
-%     for j = 1:length(neuron.motion.number)
-%         if Coding_Probability(neuron.motion.direction(i)) > rand(1) && i~=j
-%             Neuron_Connected(k,1) = neuron.motion.number(i); % Source Neuron
-%             Neuron_Connected(k,2) = neuron.motion.number(j); % Connected Neuron
-%             if Coding_Probability(neuron.motion.direction(i)) == 10/26
-%                 Neuron_Connected(k,3) = (.8 > rand(1)); % 1 = Bidirectional, 0 = Unidirectional in direction of connected pair
-%             elseif Coding_Probability(neuron.motion.direction(i)) == 4/24
-%                 Neuron_Connected(k,3) = (.5 > rand(1));
-%             end
-%             k = k+1;
-%         end
-%     end
-% end
-
+% Neuron Oscillation Properties
 neuron.oscillatory = neuron.inhibitory(randperm(numel(neuron.inhibitory), ceil(length(neuron.inhibitory)*Inhibitory_Oscillatory_Percentage)));
 neuron.nonoscillatory = setdiff(neuron.inhibitory,neuron.oscillatory);
 neuron.oscillatorytype = zeros(1,NumNeurons); neuron.oscillatorytype(neuron.oscillatory) = 1; % Stores if neuron is non-oscillatory (0), or oscillatory (1)
 
-
+% Neuron Adaptation
 neuron.adapt.type = ones(1,NumNeurons); % 1 = Fast Adapting Neurons
-rand = randperm(length(neuron.adapttype)); % Random Permutation
-neuron.adapt.type(rand(1:floor(NumNeurons.*.06))) = 2; % 2 = Slow Adapting Neurons
-rand = setdiff(randperm(length(neuron.adapttype)),find(neuron.adapttype == 2)); % Random Permutation
-neuron.adapt.type(rand(1:floor(NumNeurons.*.40))) = 3; % Mixed
+randorder = randperm(length(neuron.adapt.type)); % Random Permutation
+neuron.adapt.type(randorder(1:floor(NumNeurons.*.06))) = 2; % 2 = Slow Adapting Neurons
+randorder = setdiff(randperm(length(neuron.adapt.type)),find(neuron.adapt.type == 2)); % Random Permutation
+neuron.adapt.type(randorder(1:floor(NumNeurons.*.40))) = 3; % Mixed
 load('rateFunctions.mat');
 neuron.adapt.ratefunction(1,:) = RA_function;
 neuron.adapt.ratefunction(2,:) = SA_function;
@@ -295,29 +277,35 @@ for i = 1:NumNeurons
     neuron.indices(i).soma = find(singlepop == 1);
 end
 
+
 clear('singlepop');
 %% Stimulation Locations Matrix
 
 % 10x10 electrode array. First we must determine their locations
 electrode.x = []; electrode.y = [];
-for i = 1:10 % Number of electrodes = 100, 10x10 over 4mm in center of map. Does not create an electrode at percent center!
-    for j = 1:10
-        electrode.x(i,j) = (i-1) * sx/10 + sy/20;
-        electrode.y(i,j) = (j-1) * sy/10 + sy/20;
-    end
-end
-electrode.x = electrode.x(:); electrode.y = electrode.y(:);
+% for i = 1:10 % Number of electrodes = 100, 10x10 over 4mm in center of map. Does not create an electrode at percent center!
+%     for j = 1:10
+%         electrode.x(i,j) = (i-1) * sx/10 + sy/20;
+%         electrode.y(i,j) = (j-1) * sy/10 + sy/20;
+%     end
+% end
+% electrode.x = electrode.x(:); electrode.y = electrode.y(:);
+
+electrode.x = round((sx/((sqrt(numelectrodes))+1)).*(1:(sqrt(numelectrodes)))); electrode.x = repmat(electrode.x,1,sqrt(numelectrodes));
+electrode.y = round((sy/((sqrt(numelectrodes))+1)).*(1:(sqrt(numelectrodes)))); electrode.y = repmat(electrode.y,sqrt(numelectrodes),1); electrode.y = electrode.y(:);
 
 % Now we must determine how far each square is to each electrode for later
 % intergrating.
+% I/R^2, in units nA/mm^2
+% https://journals.physiology.org/doi/full/10.1152/jn.00126.2006
 
 Stim_Distance_Map = zeros(length(electrode.x),sx,sy);
 for i = 1:length(electrode.x)
     Stim_Loc =  zeros(sx, sy); % Location of stimulus
     Stim_Loc(electrode.y(i)-electrode.radii:electrode.y(i)+electrode.radii,electrode.x(i)-electrode.radii:electrode.x(i)+electrode.radii) = 1; % Builds electrode stimulus location matrix
     Ed = bwdist(Stim_Loc); % Calculates the Euclidean distance from stim points. Sets origin (stim point) to 0
-    Stim_Distance = Stim_Loc + Ed; % Distance of every square to the nearest stim location
-    Stim_Distance_Map(i,:,:) = Stim_Distance;
+    Stim_Distance = Stim_Loc + Ed; % Distance of every square to the nearest stim location in mm
+    Stim_Distance_Map(i,:,:) = Stim_Distance./1000; % Stores distance from electrode in mm
 end
 
 %% Neuron And Axon Area Summation
@@ -330,21 +318,80 @@ for i = 1:NumNeurons
 
     for j = 1:length(electrode.x)
         
-        neuron.io.axon(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.indices(i).axon).^2)); % Summation 1/r^2 area component of axon
-        neuron.io.soma(i,j) = sum(sum(1./Stim_Distance_Map(j,neuron.indices(i).soma).^2)); % Summation 1/r^2 area component of soma % Summation 1/r^2 area component of soma
+        x1 = Stim_Distance_Map(j,neuron.indices(i).soma); % Soma Distance Values in mm
+        x2 = Stim_Distance_Map(j,neuron.indices(i).axon); % Axon Distance Values in mm
+
+        % Sanity check : r = 1.01:0.01:5; plot(r,1./r.^2); % Electrical
+        % field as a function of distance
+        neuron.io.soma(i,j) = sum(sum(1./(x1+1).^2))/length(x1); % Mean 1/(r+1)^2 area component of soma. Units nA/mm^2
+        neuron.io.axon(i,j) = sum(sum(1./(x2+1).^2))/length(x2); % Mean 1/(r+1)^2 area component of axon. Units nA/mm^2
         
         %lightspread.calc = lightspread.averaged.a.*exp(lightspread.averaged.b.*Stim_Distance_Map(j,neuron.indices(i).soma)); % Light Intensity Calculation
         %lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
         %neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
         
-        x = Stim_Distance_Map(j,neuron.indices(i).soma)/1000; % Distance Values in mm
-        irridance = (lightspread.irridance.a) ./ (x.^2 + lightspread.irridance.b.*x + lightspread.irridance.c); % Irridance value vs distance, in mW/mm^2
+        irridance = (lightspread.irridance.a) ./ (x1.^2 + lightspread.irridance.b.*x1 + lightspread.irridance.c); % Irridance value vs distance, in mW/mm^2
         neuron.oo.soma(i,j) = sum(sum(irridance)); % Sum of irridance on neuron, in mW/mm^2
     end
     
 end
 
-% Axon Generation for motion-tuned neural connections
+%% Neuron Connections
+
+%Neuron Motion-tuned axon connections 
+neuron.motion.direction = randi([1,2],[1,length(neuron.motion.number)]); % Gives every motion neuron an orientation 0 or 90 degrees, randomly
+neuron.motion.codingprobability = [10/26 4/24]; % Connection Probability, given by Ko et al 2011
+neuron.connections = []; k =1;
+
+for i = 1:length(neuron.motion.number)
+    for j = 1:length(neuron.motion.number)
+        if neuron.motion.codingprobability(neuron.motion.direction(i)) > rand(1) && i~=j
+            neuron.connections(k,1) = neuron.motion.number(i); % Source Neuron
+            neuron.connections(k,2) = neuron.motion.number(j); % Connected Neuron
+            if neuron.motion.codingprobability(neuron.motion.direction(i)) == 10/26
+                neuron.connections(k,3) = (.8 > rand(1)); % 1 = Bidirectional, 0 = Unidirectional in direction of connected pair
+            elseif neuron.motion.codingprobability(neuron.motion.direction(i)) == 4/24
+                neuron.connections(k,3) = (.5 > rand(1));
+            end
+            k = k+1;
+        end
+    end
+end
+
+%Neuron axon connections based on pad proximity
+codingprobability = [10/26/5]; % Connection Probability, given by Ko et al 2011 https://www.nature.com/articles/nature09880
+neuron.connections = []; k =length(neuron.connections)+1;
+padcombination = [1 2; 2 3; 3 4; 4 5; 6 7; 8 9; 9 10; 12 13; 13 14; 14 15];
+
+for ii = 1:length(padcombination)
+    pad1neurons = find(neuron.pad == padcombination(ii,1) & neuron.type == 2); % All excitatory neurons in first pad
+    pad2neurons = find(neuron.pad == padcombination(ii,2) & neuron.type == 2); % All excitatory neurons in second (adjacent) pad
+    for i = 1:length(pad1neurons)
+        for j = 1:length(pad2neurons)
+            if codingprobability > rand(1)
+                neuron.connections(k,1) = pad1neurons(i); % Source Neuron
+                neuron.connections(k,2) = pad1neurons(j); % Connected Neuron
+                neuron.connections(k,3) = (.8 > rand(1)); % 1 = Bidirectional, 0 = Unidirectional in direction of connected pair
+                k = k+1;
+            end
+        end
+    end
+end
+
+a = 2.96; % IPSP
+b = 2.52;
+reference = 2.96;
+neuron.inhibitoryfactor = a.*randn(length(neuron.inhibitory),1) + b;
+neuron.inhibitoryfactor(neuron.inhibitoryfactor<0.01) = 0.01;
+neuron.inhibitoryfactor = (neuron.inhibitoryfactor/reference)/100; % Convert to percentage
+
+a = 0.65; % EPSP
+b = 0.64;
+y = a.*randn(length(neuron.connections),1) + b;
+y(y<0.01) = 0.01;
+neuron.connections(:,4) = (y/reference)/100;
+
+%Axon Generation for motion-tuned neural connections
 % I0_Motion_Neuron_Connections = zeros(length(Neuron_Connected),length(electrode.x));
 % for i = 1:length(Neuron_Connected)
 %     I0_Motion_Neuron_Connections1 = zeros(1,length(electrode.x));
@@ -359,6 +406,8 @@ end
 %     end
 %     I0_Motion_Neuron_Connections(i,:) = I0_Motion_Neuron_Connections1(j);
 % end
+% 
+% 
 % neuron.number(i).i0.Motion = zeros(NumNeurons,length(electrode.x));
 % for i = 1:length(I0_Motion_Neuron_Connections)
 %     neuron.number(Neuron_Connected(i,1)).i0.motion = neuron.number(Neuron_Connected(i,1)).i0.motion + I0_Motion_Neuron_Connections(i,:);

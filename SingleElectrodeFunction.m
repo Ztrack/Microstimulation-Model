@@ -11,7 +11,6 @@ Oscillatory_Behavior = 1; % is set =1, .33 of all inhibitory neurons will use Os
 Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
 lambdatype = 1; % What type of calcultion stimulus is presented. 1= current, 2 = opsin
 axonswitch = 1; % if 0, then no axon is added. If 1, then axon is used in summation.
-homogeneous = 1; % If 0, non-homogeneous, rate varying poisson process is used
 
 % Apply Features
 if calctype == 1 %load initial condition
@@ -32,146 +31,90 @@ neuron.lambda = zeros(NumNeurons,1);
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 NumTrials = 100;
-inhibitoryfactor = [0.01 0.03 0.1 0.125 0.15 0.2]; % at rate = 40hz (for inhibitory), there is a X% inhibition factor active. This increases linearly with lambda.
-%inhibitoryfactor = [0.01 0.005 0.001 0.0005];
+%inhibitoryfactor = [0.01 0.03 0.1 0.125 0.15 0.2]; % at rate = 40hz (for inhibitory), there is a X% inhibition factor active. This increases linearly with lambda.
+inhibitoryfactor = [0.01];
 NumInhibitoryMotif = 2; % Number of inhibitory neurons, if calctype = 2
-
 
 %% Loop Start
 h = 400; % Steps
-numrepeats = 100; % Number of overall repeats
+numrepeats = 4; % Number of overall repeats
 ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
 ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
 
-for kkk = 1:2
-    lambdatype = kkk;
+for kk = 1:1
+    lambdatype = kk;
     
     if lambdatype == 1
         unitsmin = 1;
-        unitsmax = 100000;
+        unitsmax = 50;
     else
         unitsmin = .0001;
-        unitsmax = .001;
+        unitsmax = .04;
     end
     I0 = linspace(0,unitsmax,h);
     
     
-    for kk = 1:1
+    if calctype == 2
+        load('InitialConditionsFullB.mat');
+        NumNeuronsMotif = 5+NumInhibitoryMotif; % Reinitializes # Neurons per motif
+        NumNeurons = NumMotifs*NumNeuronsMotif;
+        a = zeros(1,NumInhibitoryMotif); b= ones(1,5-NumInhibitoryMotif); a = [a b]; a = [a 0 0 0 0 0];
+        Extra_Inhib_Neurons = repmat(a,1,NumMotifs); Extra_Inhib_Neurons = find(Extra_Inhib_Neurons == 1); % Identifies extra neurons
+        neuron.io.axon(Extra_Inhib_Neurons,:) = []; % Erases data from extra neurons
+        neuron.io.soma(Extra_Inhib_Neurons,:) = []; % Erases data from extra neurons
+        neuron.motif(Extra_Inhib_Neurons) = [];
+        neuron.type(Extra_Inhib_Neurons) = [];
+        neuron.oo.soma(Extra_Inhib_Neurons,:) = [];
+        neuron.dirmult(Extra_Inhib_Neurons,:) = [];
+        neuron.lambda = zeros(1,NumNeurons);
+        neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
+        neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
+        neuron.inhibitory = find(neuron.type == 1); % New Inhibitory List
+        neuron.excitatory = find(neuron.type == 2);
+        neuron.lambdamod(neuron.type == 1) = 40;
+        neuron.lambdamod(neuron.type == 2) = neuron.lambda(2) - neuron.lambda(1)*(neuron.lambda(1).*(inhibitoryfactor(1)/40));
         
-        if calctype == 2
-            load('InitialConditionsFullB.mat');
-            NumNeuronsMotif = 5+NumInhibitoryMotif; % Reinitializes # Neurons per motif
-            NumNeurons = NumMotifs*NumNeuronsMotif;
-            a = zeros(1,NumInhibitoryMotif); b= ones(1,5-NumInhibitoryMotif); a = [a b]; a = [a 0 0 0 0 0];
-            Extra_Inhib_Neurons = repmat(a,1,NumMotifs); Extra_Inhib_Neurons = find(Extra_Inhib_Neurons == 1); % Identifies extra neurons
-            neuron.io.axon(Extra_Inhib_Neurons,:) = []; % Erases data from extra neurons
-            neuron.io.soma(Extra_Inhib_Neurons,:) = []; % Erases data from extra neurons
-            neuron.motif(Extra_Inhib_Neurons) = [];
-            neuron.type(Extra_Inhib_Neurons) = [];
-            neuron.oo.soma(Extra_Inhib_Neurons,:) = [];
-            neuron.dirmult(Extra_Inhib_Neurons,:) = [];
-            neuron.lambda = zeros(1,NumNeurons);
-            neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
-            neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
-            neuron.inhibitory = find(neuron.type == 1); % New Inhibitory List
-            neuron.excitatory = find(neuron.type == 2);
-            neuron.lambdamod(neuron.type == 1) = 40;
-            neuron.lambdamod(neuron.type == 2) = neuron.lambda(2) - neuron.lambda(1)*(neuron.lambda(1).*(inhibitoryfactor(1)/40));
-            
-        end
+    end
+    
+    Neuron_RB = NaN(numrepeats,NumNeurons); % Rhoebase for every neuron, stored as I0 which causes neuron.lambda+1 spike
+    
+    parfor jj = 1:numrepeats
         
-        Neuron_RB = NaN(numrepeats,NumNeurons); % Rhoebase for every neuron, stored as I0 which causes neuron.lambda+1 spike
+        Neuron_RB1 = NaN(1,NumNeurons);
         
-        parfor jj = 1:numrepeats
+        for ii = 1:length(I0)
             
-            Neuron_RB1 = NaN(1,NumNeurons);
+            Ie_Neurons = neuron.io.soma(:,ElectrodeNo).*neuron.dirmult(:,ElectrodeNo).*I0(ii) + neuron.io.axon(:,ElectrodeNo).*I0(ii).*axonswitch; % Summation of current directly from stimulus + backpropogated up by axons. AU Current
+            Il_Neurons = neuron.oo.soma(:,ElectrodeNo).*I0(ii); % Summation of current directly from stimulus. AU irridance
             
-            for ii = 1:length(I0)
-                
-                Ie_Neurons = neuron.io.soma(:,ElectrodeNo).*neuron.dirmult(:,ElectrodeNo).*I0(ii) + neuron.io.axon(:,ElectrodeNo).*I0(ii).*axonswitch; % Summation of current directly from stimulus + backpropogated up by axons. AU Current
-                Il_Neurons = neuron.oo.soma(:,ElectrodeNo).*I0(ii); % Summation of current directly from stimulus. AU irridance
-                
-                % Calculate neuron.lambda Change for poisson process
-                [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,inhibitoryfactor(kk),lambdatype);
-                
-                % Finding RB for each neuron
-                
-                for i = 1:NumNeurons
-                    if isnan(Neuron_RB1(i))| homogeneous == 0 % If RB does not exist, continue, otherwise this neuron is skipped
-                        
-                        Lambda_Hat_Spikes = Simple_PoissonGen(lambdahat(i), dt, NumTrials);
-                        Y = prctile(Lambda_Hat_Spikes,bpct); % Calculates bottom xth percentile
-                        if Y > neuron.lambda(i)+1
-                            Neuron_RB1(i) = I0(ii);
-                        end
+            % Calculate neuron.lambda Change for poisson process
+            [lambdahat,lambdamod] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,lambdatype);
+            
+            % Finding RB for each neuron
+            
+            for i = 1:NumNeurons
+                if isnan(Neuron_RB1(i)) % If RB does not exist, continue, otherwise this neuron is skipped
+                    
+                    Lambda_Hat_Spikes = Simple_PoissonGen(lambdahat(i), dt, NumTrials);
+                    Y = prctile(Lambda_Hat_Spikes,bpct); % Calculates bottom xth percentile
+                    if Y > lambdamod(i)+1
+                        Neuron_RB1(i) = I0(ii);
                     end
                 end
             end
-            Neuron_RB(jj,:) = Neuron_RB1;
         end
-        
-        %% Export
-        if lambdatype == 1 & calctype == 1
-            if kk == 1
-                solrb.e1 = Neuron_RB;
-            elseif kk ==2
-                solrb.e2 = Neuron_RB;
-            elseif kk ==3
-                solrb.e3 = Neuron_RB;
-            elseif kk ==4
-                solrb.e4 = Neuron_RB;
-            elseif kk ==5
-                solrb.e5 = Neuron_RB;
-            elseif kk ==6
-                solrb.e5 = Neuron_RB;
-            end
-            solrb.e.I0 = I0;
-        elseif lambdatype == 2 & calctype == 1
-            if kk == 1
-                solrb.o1 = Neuron_RB;
-            elseif kk ==2
-                solrb.o2 = Neuron_RB;
-            elseif kk ==3
-                solrb.o3 = Neuron_RB;
-            elseif kk ==4
-                solrb.o4 = Neuron_RB;
-            elseif kk ==5
-                solrb.o5 = Neuron_RB;
-            elseif kk ==6
-                solrb.o5 = Neuron_RB;
-            end
-            solrb.o.I0 = I0;
-        end
-        if lambdatype == 1 & calctype == 2
-            if kk == 1
-                solrb2.e1 = Neuron_RB;
-            elseif kk ==2
-                solrb2.e2 = Neuron_RB;
-            elseif kk ==3
-                solrb2.e3 = Neuron_RB;
-            elseif kk ==4
-                solrb2.e4 = Neuron_RB;
-            elseif kk ==5
-                solrb2.e5 = Neuron_RB;
-            elseif kk ==6
-                solrb2.e5 = Neuron_RB;
-            end
-            solrb2.e.I0 = I0;
-        elseif lambdatype == 2 & calctype == 2
-            if kk == 1
-                solrb2.o1 = Neuron_RB;
-            elseif kk ==2
-                solrb2.o2 = Neuron_RB;
-            elseif kk ==3
-                solrb2.o3 = Neuron_RB;
-            elseif kk ==4
-                solrb2.o4 = Neuron_RB;
-            elseif kk ==5
-                solrb2.o5 = Neuron_RB;
-            end
-            solrb2.o.I0 = I0;
-        end
+        Neuron_RB(jj,:) = Neuron_RB1;
     end
+    
+    %% Export
+    if lambdatype == 1
+        solrb.e1 = Neuron_RB;
+        solrb.e.I0 = I0;
+    elseif lambdatype == 2
+        solrb.o1 = Neuron_RB;
+        solrb.o.I0 = I0;
+    end
+    
 end
 if calctype == 1
     save('solrb1.mat','solrb','h','numrepeats','ElectrodeNo');

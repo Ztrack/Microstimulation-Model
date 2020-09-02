@@ -27,11 +27,10 @@ end
 % Parameters
 bpct = 05; % Bottom Percentile for Rheobase calculation. 50 for 50%, 05 for 95% CI.
 NumTrials = 50; % Number of trials per poisson process
-simulation = 2000; % Number of overall repeats for monte carle simulation
+simulation = 4; % Number of overall repeats for monte carle simulation
 neuron.lambda = zeros(NumNeurons,1);
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
-inhibitoryfactor = 0.01; % at rate = 40hz (for inhibitory), there is a X% inhibition factor active. This increases linearly with lambda.
 
 %% Loop Start
 h = 50; % number of steps for current/LI
@@ -48,12 +47,12 @@ h = 50; % number of steps for current/LI
 
 if lambdatype == 1
     unitsmin = 1;
-    unitsmax = 200000; 
+    unitsmax = 50; 
 else
     unitsmin = .0001;
-    unitsmax = .0025; 
+    unitsmax = .05; 
 end
-units = linspace(unitsmin,unitsmax,h); 
+units = linspace(0,unitsmax,h); 
 
 output = zeros(100,h,NumNeurons); % Stores poisson spike rate for every output, logical matrix
 
@@ -67,13 +66,13 @@ parfor j = 1:100 % Iterate every electrode
         Il_Neurons = neuron.oo.soma(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus. AU luminous intensity
         
         % Calculate neuron.lambda Change for poisson process
-        [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,inhibitoryfactor,lambdatype);
+        [lambdahat,lambdamod] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,lambdatype);
         BestNeurons = lambdahat >= median(lambdahat); % Calculate only the easiest to activate 50%
         
         % Calculate Poisson spike rates for each neuron
         for ii = 1:NumNeurons
             if BestNeurons(ii) == 1
-                y = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct) > neuron.lambda(ii)+1; % Calculate Lambda
+                y = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct) > lambdamod(ii)+1; % Calculate Lambda
                 output1(i,ii) = sum(y);
                 %outputactivated(ii) = sum(y) >= simulation.*(.5); % Useful for debugging
             end
