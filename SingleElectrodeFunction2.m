@@ -54,9 +54,9 @@ else
 end
 units = linspace(0,unitsmax,h); 
 
-output = zeros(100,h,NumNeurons); % Stores poisson spike rate for every output, logical matrix
+output = zeros(length(electrode.x),h,NumNeurons); % Stores poisson spike rate for every output, logical matrix
 
-parfor j = 1:100 % Iterate every electrode
+parfor j = 1:length(electrode.x) % Iterate every electrode
     output1 = zeros(h,NumNeurons);
     ElectrodeNo = j;
     

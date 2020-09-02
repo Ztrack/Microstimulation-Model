@@ -22,18 +22,18 @@ lambdatype = 4; % 3 = MS + Optogenetics (all excitatory - affects all cells indi
 %% Matlab PSO options
 
 if lambdatype == 1
-    nvars = 100;
+    nvars = length(electrode.x);
     lb = zeros(1,nvars);
     ub = [threshold.c].*.5;
     
 elseif lambdatype == 2
-    nvars = 100;
+    nvars = length(electrode.x);
     lb = zeros(1,nvars);
     ub = [threshold.o]*.25;
     
 else
     
-    nvars = 200;
+    nvars = length(electrode.x)*2;
     lb = zeros(1,nvars);
     ub = [threshold.c.*.5 threshold.o.*.25];
 end
@@ -47,7 +47,7 @@ options = optimoptions('particleswarm','SwarmSize',500,'UseParallel',true,'displ
 
 %% Matlab PSO In order Microstimulation then optogenetics
 lambdatype = 1;
-nvars = 100;
+nvars = length(electrode.x);
 lb = zeros(1,nvars);
 ub = [threshold.c].*.5;
 neuron.IC = 0; % If IC =1, initial conditions are used from previous solution
@@ -58,7 +58,7 @@ microstimx = x;
 %%
 x = microstimx;
 lambdatype = 4;
-nvars = 100;
+nvars = length(electrode.x);
 lb = zeros(1,nvars);
 ub = [threshold.o]*.10;
 neuron.IC = 1; % If IC =1, initial conditions are used from previous solution
@@ -78,18 +78,18 @@ for i = 1:5
     lambdatype = i;
     fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype);
     if lambdatype == 1
-        nvars = 100;
+        nvars = length(electrode.x);
         lb = zeros(1,nvars);
         ub = [threshold.c]*.1;
         
     elseif lambdatype == 2
-        nvars = 100;
+        nvars = length(electrode.x);
         lb = zeros(1,nvars);
         ub = [threshold.o];
         
     else
         
-        nvars = 200;
+        nvars = length(electrode.x)*2;
         lb = zeros(1,nvars);
         ub = [threshold.c*.1 threshold.o];
     end
@@ -177,7 +177,7 @@ plot(x3,y3,'.','color','Green'); hold on;
 %% Simulated Annealing
 % https://www.mathworks.com/help/gads/simulannealbnd.html
 options = optimoptions('simulannealbnd','display','iter');
-x0 = ones(200,1);
+x0 = ones(length(electrode.x)*2,1);
 [x,fval,exitflag,output] = simulannealbnd(fun,x0,lb,ub,options)
 
 %% Direct Search
@@ -190,16 +190,16 @@ ub = [];
 nonlcon = [];
 
 if lambdatype == 1
-    lb = zeros(100,1);
-    x0 = rand(1,100).*threshold.c;
+    lb = zeros(length(electrode.x),1);
+    x0 = rand(1,length(electrode.x)).*threshold.c;
     ub1 = [threshold.c];
 elseif lambdatype == 2
-    lb = zeros(100,1);
-    x0 = rand(1,100).*threshold.o;
+    lb = zeros(length(electrode.x),1);
+    x0 = rand(1,length(electrode.x)).*threshold.o;
     ub1 = [threshold.o];
 else
-    lb = zeros(200,1);
-    x0 = [rand(1,100).*threshold.c rand(1,100).*threshold.o].*.25;
+    lb = zeros(length(electrode.x)*2,1);
+    x0 = [rand(1,length(electrode.x)).*threshold.c rand(1,length(electrode.x)).*threshold.o].*.25;
     ub1 = [threshold.c threshold.o].*.5;
 end
 
@@ -401,20 +401,20 @@ function z = MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype,x) %
 % ec = all electrode variables
 
 if lambdatype == 1
-    ec = electrodestim(1:100); % Electrical stimulation values
-    eo = zeros(100,1);
+    ec = electrodestim(1:length(electrode.x)); % Electrical stimulation values
+    eo = zeros(length(electrode.x),1);
 elseif lambdatype == 2
-    ec = zeros(100,1);
-    eo = electrodestim(1:100); % Electrode optical stimulation value
+    ec = zeros(length(electrode.x),1);
+    eo = electrodestim(1:length(electrode.x)); % Electrode optical stimulation value
 elseif lambdatype == 3 | neuron.IC == 1
     ec = x;
-    eo = electrodestim(1:100); % Electrode optical stimulation value
+    eo = electrodestim(1:length(electrode.x)); % Electrode optical stimulation value
 elseif lambdatype == 4 | neuron.IC == 1
     ec = x;
-    eo = electrodestim(1:100); % Electrode optical stimulation value
+    eo = electrodestim(1:length(electrode.x)); % Electrode optical stimulation value
 else
-    ec = electrodestim(1:100); % Electrical stimulation values
-    eo = electrodestim(101:200); % Electrode optical stimulation values
+    ec = electrodestim(1:length(electrode.x)); % Electrical stimulation values
+    eo = electrodestim(length(electrode.x)+1:length(electrode.x)*2); % Electrode optical stimulation values
 end
 
 % Electrical / Optical Field Summation

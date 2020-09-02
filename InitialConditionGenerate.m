@@ -10,7 +10,7 @@ theta_threshold = 45; % angle difference threshold - If the neuron axon is out o
 
 % Population Properties
 NumNeurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
-numelectrodes = 100;
+numelectrodes = 36;
 NumNeuronsMotif = 5; % # of neurons in each motif
 NumInhibitoryMotif = 1; % # of inhibitory neurons in motif
 NumMotifs = NumNeurons/NumNeuronsMotif; % # Neuron in Motif.
