@@ -2,7 +2,7 @@ clc; clear; close all;
 load('InitialConditionsFull.mat');
 
 n = 0.5; % Percent activation to count as 'activated'
-x = 10; % The current/opto step must activate this many motion tuned neurons to store the step
+x = 20; % The current/opto step must activate this many motion tuned neurons to store the step
 load('SEoutputc.mat');
 threshold.c = thresholdfun(output,units,n,x);
 load('SEoutputo.mat');
@@ -18,13 +18,14 @@ neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 NumTrials = 100;
 % lambdatype:
 lambdatype = 4; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
+neuron.IC = 0;
 
 %% Matlab PSO options
 
 if lambdatype == 1
     nvars = length(electrode.x);
     lb = zeros(1,nvars);
-    ub = [threshold.c].*.5;
+    ub = [threshold.c].*.05;
     
 elseif lambdatype == 2
     nvars = length(electrode.x);
@@ -35,78 +36,74 @@ else
     
     nvars = length(electrode.x)*2;
     lb = zeros(1,nvars);
-    ub = [threshold.c.*.5 threshold.o.*.25];
+    ub = [threshold.c.*.3 threshold.o.*.6];
 end
-
 fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype,x);
-options = optimoptions('particleswarm','SwarmSize',500,'UseParallel',true,'display','iter');
 
-%% Matlab PSO Once matlab
-%ub = [];
-[x,fval,exitflag,output] = particleswarm(fun,nvars,lb,ub,options);
+SwarmSize = 1000; % Number of particles in swarm
+maxiterations = 200; % Max number of iterations, including 'stall' iterations
+maxstalliterations = 50; % Max number of stalls allowable
+options = optimoptions('particleswarm','SwarmSize',SwarmSize,'MaxIterations',maxiterations,'MaxStallIterations',maxstalliterations,'UseParallel',true,'display','iter');
+[x,fval,allfval,exitFlag,output] = particleswarm(fun,nvars,lb,ub,options);
 
-%% Matlab PSO In order Microstimulation then optogenetics
-lambdatype = 1;
-nvars = length(electrode.x);
-lb = zeros(1,nvars);
-ub = [threshold.c].*.5;
-neuron.IC = 0; % If IC =1, initial conditions are used from previous solution
-x = []; % Clear Solution space
-fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype,x);
-[x,fval,exitflag,output] = particleswarm(fun,nvars,lb,ub,options);
-microstimx = x;
-%%
-x = microstimx;
-lambdatype = 4;
-nvars = length(electrode.x);
-lb = zeros(1,nvars);
-ub = [threshold.o]*.10;
-neuron.IC = 1; % If IC =1, initial conditions are used from previous solution
-fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype,x);
-[x,fval,exitflag,output] = particleswarm(fun,nvars,lb,ub,options);
-
-
-neuron.IC = 0; % Clear
 %% Matlab PSO Iterative
 
-options = optimoptions('particleswarm','SwarmSize',1000,'UseParallel',true,'display','off');
-numrepeats = 3;
-CostsCurve = nan(5,numrepeats);
+numrepeats = 10; % Number of times to repeat optimization
+SwarmSize = 1000; % Number of particles in swarm
+maxiterations = 250; % Max number of iterations, including 'stall' iterations
+maxstalliterations = 250; % Max number of stalls allowable
 
-for i = 1:5
+
+fval_iter = nan(4,numrepeats,maxiterations); % Initialize storage matrix
+for i = 1:4
     
     lambdatype = i;
-    fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype);
     if lambdatype == 1
         nvars = length(electrode.x);
         lb = zeros(1,nvars);
-        ub = [threshold.c]*.1;
-        
+        ub = [threshold.c]*.05;
     elseif lambdatype == 2
         nvars = length(electrode.x);
         lb = zeros(1,nvars);
-        ub = [threshold.o];
-        
-    else
-        
+        ub = [threshold.o]*.25;
+    elseif lambdatype == 3
         nvars = length(electrode.x)*2;
         lb = zeros(1,nvars);
-        ub = [threshold.c*.1 threshold.o];
+        ub = [threshold.c*.025 threshold.o*.125];
+    elseif lambdatype == 4
+        nvars = length(electrode.x)*2;
+        lb = zeros(1,nvars);
+        ub = [threshold.c*.05 threshold.o*.125];
     end
-    %ub = [];
+    fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype,x);
+    options = optimoptions('particleswarm','SwarmSize',SwarmSize,'MaxIterations',maxiterations,'MaxStallIterations',maxstalliterations,'UseParallel',true,'display','off');
+
     for ii = 1:numrepeats
         
-        [x,fval,~,~] = particleswarm(fun,nvars,lb,ub,options);
+        [x,fval,allfval,exitFlag,output] = particleswarm(fun,nvars,lb,ub,options);
         
-        CostsCurve(i,ii) = fval;
-        sol.type(i).repeat(ii).x = x;
-        if nanmin(CostsCurve(i,:)) == fval % IF its the minimum for this set
-            sol.type(i).bestx = x; % Save the solution
-        end
-        
+        fval_iter(i,ii,1:length(allfval)) = allfval;
+        fval_iter(i,ii,length(allfval):end) = allfval(end);
+        fval_maxiter(i,ii) = length(allfval);
     end
+    disp('done 1');
+end
+
+
+figure;
+for i = 1:size(fval_iter,1)
+    x = 1:length(fval_iter);
+    y = squeeze(mean(fval_iter(i,:,:),2));
+    yerr = squeeze(1.96.*std(fval_iter(i,:,:))/sqrt(numrepeats));
+    errorbar(x,y,yerr);
+    hold on;
     
 end
+ylim([0 6]);
+xlabel('Lambda Calculation Type');
+ylabel('Non-Motion / Motion Neuron Ratio');
+title('Optimization Performance');
+legend('MS','Opto','MS + Opto (+all)','MS + Opto (-all)','MS + Opto (+all) + Opto (-all)');
 
 %% Matlab PSO Iterative Across #'s
 
@@ -401,20 +398,20 @@ function z = MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype,x) %
 % ec = all electrode variables
 
 if lambdatype == 1
-    ec = electrodestim(1:length(electrode.x)); % Electrical stimulation values
-    eo = zeros(length(electrode.x),1);
+    ec = electrodestim; % Electrical stimulation values
+    eo = zeros(length(electrodestim),1);
 elseif lambdatype == 2
-    ec = zeros(length(electrode.x),1);
-    eo = electrodestim(1:length(electrode.x)); % Electrode optical stimulation value
-elseif lambdatype == 3 | neuron.IC == 1
+    ec = zeros(length(electrodestim),1);
+    eo = electrodestim; % Electrode optical stimulation value
+elseif lambdatype == 3 & neuron.IC == 1
     ec = x;
-    eo = electrodestim(1:length(electrode.x)); % Electrode optical stimulation value
-elseif lambdatype == 4 | neuron.IC == 1
+    eo = electrodestim; % Electrode optical stimulation value
+elseif lambdatype == 4 & neuron.IC == 1
     ec = x;
-    eo = electrodestim(1:length(electrode.x)); % Electrode optical stimulation value
+    eo = electrodestim; % Electrode optical stimulation value
 else
-    ec = electrodestim(1:length(electrode.x)); % Electrical stimulation values
-    eo = electrodestim(length(electrode.x)+1:length(electrode.x)*2); % Electrode optical stimulation values
+    ec = electrodestim(1:length(electrodestim)/2); % Electrical stimulation values
+    eo = electrodestim((length(electrodestim)/2)+1:length(electrodestim)); % Electrode optical stimulation values
 end
 
 % Electrical / Optical Field Summation
