@@ -9,7 +9,7 @@ Inhibitory_Factor = .01; % 0 to 1 Greater factor will inhibit RS neurons more
 theta_threshold = 45; % angle difference threshold - If the neuron axon is out of phase by at least this much to the current-stimulus, the electric field acting on the neuron is weakened to 25%.
 
 % Population Properties
-NumNeurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
+NumNeurons = 5000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
 numelectrodes = 36;
 NumNeuronsMotif = 5; % # of neurons in each motif
 NumInhibitoryMotif = 1; % # of inhibitory neurons in motif
@@ -358,22 +358,40 @@ for i = 1:length(neuron.motion.number)
     end
 end
 
+%Neuron axon connections based on current pad only
+codingprobability = [(4/24)]; % Connection Probability, given by Ko et al 2011 https://www.nature.com/articles/nature09880
+k =length(neuron.connections)+1;
+
+for ii = 1:NumPads
+    pad1neurons = find(neuron.pad == ii & neuron.type == 2); % All excitatory neurons in pad ii
+    C = nchoosek(pad1neurons,2); % all Combinations for neurons
+    for i = 1:length(C)
+        if codingprobability > rand(1)
+            neuron.connections(k,1) = C(i,1); % Source Neuron
+            neuron.connections(k,2) = C(i,2); % Connected Neuron
+            neuron.connections(k,3) = (.8 > rand(1)); % 1 = Bidirectional, 0 = Unidirectional in direction of connected pair
+            k = k+1;
+        else
+            % No axonal connection exists
+        end
+    end
+end
+
 %Neuron axon connections based on pad proximity
-codingprobability = [10/26/5]; % Connection Probability, given by Ko et al 2011 https://www.nature.com/articles/nature09880
-neuron.connections = []; k =length(neuron.connections)+1;
+codingprobability = [(4/24)/5]; % Connection Probability, given by Ko et al 2011 https://www.nature.com/articles/nature09880
+k =length(neuron.connections)+1;
 padcombination = [1 2; 2 3; 3 4; 4 5; 6 7; 8 9; 9 10; 12 13; 13 14; 14 15];
 
 for ii = 1:length(padcombination)
     pad1neurons = find(neuron.pad == padcombination(ii,1) & neuron.type == 2); % All excitatory neurons in first pad
     pad2neurons = find(neuron.pad == padcombination(ii,2) & neuron.type == 2); % All excitatory neurons in second (adjacent) pad
-    for i = 1:length(pad1neurons)
-        for j = 1:length(pad2neurons)
-            if codingprobability > rand(1)
-                neuron.connections(k,1) = pad1neurons(i); % Source Neuron
-                neuron.connections(k,2) = pad1neurons(j); % Connected Neuron
-                neuron.connections(k,3) = (.8 > rand(1)); % 1 = Bidirectional, 0 = Unidirectional in direction of connected pair
-                k = k+1;
-            end
+    C = nchoosek([pad1neurons pad2neurons],2); % All combinations of neurons
+    for i = 1:length(C)
+        if codingprobability > rand(1)
+            neuron.connections(k,1) = C(i,1); % Source Neuron
+            neuron.connections(k,2) = C(2,1); % Connected Neuron
+            neuron.connections(k,3) = (.8 > rand(1)); % 1 = Bidirectional, 0 = Unidirectional in direction of connected pair
+            k = k+1;
         end
     end
 end

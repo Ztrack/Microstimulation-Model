@@ -1,4 +1,4 @@
-function [x,fval,allfval,exitFlag,output] = particleswarm(fun, nvars, lb, ub, userOptions)
+function [x,fval,exitFlag,output] = particleswarm(fun, nvars, lb, ub, userOptions)
 %PARTICLESWARM Bound constrained optimization using particle swarm optimization
 %
 %   PARTICLESWARM attempts to solve problems of the form:
@@ -109,6 +109,7 @@ elseif nargin < 5
 end
 
 [x,fval] = deal([]);
+
 output = struct('rngstate', rng, 'iterations', 0, 'funccount', 0, 'message', '');
 
 % Arg fun
@@ -147,10 +148,10 @@ end
 options = initialParticleCheck(options);
 
 % Start the core algorithm
-[x,fval,allfval,exitFlag,output] = pswcore(objFcn,nvars,lbRow,ubRow,output,options);
+[x,fval,exitFlag,output] = pswcore(objFcn,nvars,lbRow,ubRow,output,options);
 end
 
-function [x,fval,allfval,exitFlag,output] = pswcore(objFcn,nvars,lbRow,ubRow,output,options)
+function [x,fval,exitFlag,output] = pswcore(objFcn,nvars,lbRow,ubRow,output,options)
 exitFlag=[];
 
 % Get algorithmic options
@@ -208,14 +209,12 @@ else
     options.PlotFcns = createCellArrayOfFunctions(options.PlotFcns,'PlotFcns');
 end
 
-
 % Setup display header 
 if  options.Verbosity > 1
     fprintf('\n                                 Best            Mean     Stall\n');
     fprintf(  'Iteration     f-count            f(x)            f(x)    Iterations\n');
     fprintf('%5.0f         %7.0f    %12.4g    %12.4g    %5.0f\n', ...
         0, state.FunEval, bestFvals, mean(state.Fvals), 0);
-		
 end
 
 % Allow output and plot functions to perform any initialization tasks
@@ -307,15 +306,7 @@ while isempty(exitFlag)
 
         newBest = min(state.IndividualBestFvals);
         if isfinite(newBest) && newBest < bestFvals
-            
-            if exist('allfval','var')
-                % Do nothing
-            else
-                allfval = [];
-            end
             bestFvals = newBest;
-            allfval = [allfval newBest];
-            
             state.LastImprovement = state.Iteration;
             state.LastImprovementTime = toc(state.StartTime);
             adaptiveInertiaCounter = max(0, adaptiveInertiaCounter-1);

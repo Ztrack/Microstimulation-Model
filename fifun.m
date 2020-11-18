@@ -7,23 +7,30 @@ function [frc,fro] = fifun(neuron,Ie_Neurons,Il_Neurons,lambdatype)
 % https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4766297/
 
 frc = zeros(length(Ie_Neurons),1); % Initialize firing rate due to current
-for i = 1:length(neuron.lambda)
-        if lambdatype == 3 & Ie_Neurons(i) < .162 %EPSP is active
-            frc(i) = (Ie_Neurons(i)/.162);
-        else
-            frc(i) = 31.2.*sqrt(Ie_Neurons(i)-.162);
-        end
-            
-end
-
-% frc = zeros(length(Ie_Neurons),1); % Initialize firing rate due to current
 % for i = 1:length(neuron.lambda)
-% %     if neuron.type(i) == 1 & Ie_Neurons(i) > 0.162 % Inhibitory type
-%         %frc(i) = 31.2.*sqrt(Ie_Neurons(i)-.162);
-%     %elseif neuron.type(i) == 2 & Ie_Neurons(i) > 2.2582 % Excitatory type
+%     if neuron.type(i) == 1 & lambdatype == 1|2|4 & Ie_Neurons(i) > 0.162 % Inhibitory type
+%         frc(i) = 31.2.*sqrt(Ie_Neurons(i)-.162);
+%     elseif neuron.type(i) == 2 & lambdatype == 1|2|4 & Ie_Neurons(i) > 2.2582 % Excitatory type
 %         frc(i) = 29.94.*sqrt(Ie_Neurons(i)-2.2582);
-%     %end
+%     
+%     % Case 3
+%     elseif neuron.type(i) == 1 & lambdatype == 3 & Ie_Neurons(i) > 0.162 % Inhibitory type
+%         frc(i) = 31.2.*sqrt(Ie_Neurons(i)-.162);
+%     elseif neuron.type(i) == 2 & lambdatype == 3 & Ie_Neurons(i) > 2.2582 % Excitatory type
+%         frc(i) = 29.94.*sqrt(Ie_Neurons(i)-2.2582);
+%     elseif neuron.type(i) == 1 & lambdatype == 3 & Ie_Neurons(i) < 0.162 % Inhibitory type
+%         frc(i) = (Ie_Neurons(i)/0.162);
+%     elseif neuron.type(i) == 2 & lambdatype == 3 & Ie_Neurons(i) < 2.2582 % Excitatory type
+%         frc(i) = (Ie_Neurons(i)/2.2582);
 % end
+
+for i = 1:length(neuron.lambda)
+        if lambdatype == 3 & Ie_Neurons(i) < 2.2582 %EPSP is active
+            frc(i) = (Ie_Neurons(i)/2.2582);
+        else
+            frc(i) = 29.94.*sqrt(Ie_Neurons(i)-2.2582);
+        end
+end
 
 %% Luminous Intensity
 % High-speed mapping of synaptic connectivity using photostimulation in Channelrhodopsin-2 transgenic mice

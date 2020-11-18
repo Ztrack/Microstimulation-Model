@@ -37,7 +37,7 @@ NumInhibitoryMotif = 2; % Number of inhibitory neurons, if calctype = 2
 
 %% Loop Start
 h = 400; % Steps
-numrepeats = 4; % Number of overall repeats
+numrepeats = 3; % Number of overall repeats
 ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
 ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
 

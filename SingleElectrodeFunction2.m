@@ -9,7 +9,7 @@ calctype = 1; % If 1, this is the standard 4:1 ratio. if 2, this is a 5:X ratio 
 Motion_Axon = 0; % if set =1, enabled, connections between relevant motion neurons is established
 Oscillatory_Behavior = 1; % is set =1, .33 of all inhibitory neurons will use Oscillatory poisson function
 Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
-lambdatype = 1; % What type of calcultion stimulus is presented. 1= current, 2 = opsin
+lambdatype = 2; % What type of calcultion stimulus is presented. 1= current, 2 = opsin
 
 % Apply Features
 if calctype == 1 %load initial condition

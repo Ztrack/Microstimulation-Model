@@ -25,55 +25,61 @@ neuron.IC = 0;
 if lambdatype == 1
     nvars = length(electrode.x);
     lb = zeros(1,nvars);
-    ub = [threshold.c].*.05;
+    ub = [threshold.c].*1;
     
 elseif lambdatype == 2
     nvars = length(electrode.x);
     lb = zeros(1,nvars);
-    ub = [threshold.o]*.25;
+    ub = [threshold.o]*1;
     
-else
+elseif lambdatype == 3
     
     nvars = length(electrode.x)*2;
     lb = zeros(1,nvars);
-    ub = [threshold.c.*.3 threshold.o.*.6];
+    ub = [threshold.c.*.25 threshold.o.*.25];
+    
+elseif lambdatype == 4
+    nvars = length(electrode.x)*2;
+    lb = zeros(1,nvars);
+    ub = [threshold.c.*.25 threshold.o.*.25];
 end
+
 fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype,x);
 
-SwarmSize = 1000; % Number of particles in swarm
+SwarmSize = 200; % Number of particles in swarm
 maxiterations = 200; % Max number of iterations, including 'stall' iterations
-maxstalliterations = 50; % Max number of stalls allowable
+maxstalliterations = 250; % Max number of stalls allowable
 options = optimoptions('particleswarm','SwarmSize',SwarmSize,'MaxIterations',maxiterations,'MaxStallIterations',maxstalliterations,'UseParallel',true,'display','iter');
 [x,fval,allfval,exitFlag,output] = particleswarm(fun,nvars,lb,ub,options);
 
 %% Matlab PSO Iterative
 
-numrepeats = 10; % Number of times to repeat optimization
-SwarmSize = 1000; % Number of particles in swarm
-maxiterations = 250; % Max number of iterations, including 'stall' iterations
-maxstalliterations = 250; % Max number of stalls allowable
+numrepeats = 5; % Number of times to repeat optimization
+SwarmSize = 200; % Number of particles in swarm
+maxiterations = 200; % Max number of iterations, including 'stall' iterations
+maxstalliterations = 200; % Max number of stalls allowable
 
 
-fval_iter = nan(4,numrepeats,maxiterations); % Initialize storage matrix
-for i = 1:4
+%fval_iter = nan(4,numrepeats,maxiterations); % Initialize storage matrix
+for i = 3
     
     lambdatype = i;
     if lambdatype == 1
         nvars = length(electrode.x);
         lb = zeros(1,nvars);
-        ub = [threshold.c]*.05;
+        ub = [threshold.c]*1;
     elseif lambdatype == 2
         nvars = length(electrode.x);
         lb = zeros(1,nvars);
-        ub = [threshold.o]*.25;
+        ub = [threshold.o]*1;
     elseif lambdatype == 3
         nvars = length(electrode.x)*2;
         lb = zeros(1,nvars);
-        ub = [threshold.c*.025 threshold.o*.125];
+        ub = [threshold.c*.25 threshold.o*.25];
     elseif lambdatype == 4
         nvars = length(electrode.x)*2;
         lb = zeros(1,nvars);
-        ub = [threshold.c*.05 threshold.o*.125];
+        ub = [threshold.c*.25 threshold.o*.25];
     end
     fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype,x);
     options = optimoptions('particleswarm','SwarmSize',SwarmSize,'MaxIterations',maxiterations,'MaxStallIterations',maxstalliterations,'UseParallel',true,'display','off');
@@ -100,7 +106,7 @@ for i = 1:size(fval_iter,1)
     
 end
 ylim([0 6]);
-xlabel('Lambda Calculation Type');
+xlabel('Optimization Iteration Number');
 ylabel('Non-Motion / Motion Neuron Ratio');
 title('Optimization Performance');
 legend('MS','Opto','MS + Opto (+all)','MS + Opto (-all)','MS + Opto (+all) + Opto (-all)');
