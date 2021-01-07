@@ -10,7 +10,7 @@ theta_threshold = 45; % angle difference threshold - If the neuron axon is out o
 
 % Population Properties
 NumNeurons = 5000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
-numelectrodes = 36;
+numelectrodes = 100;
 NumNeuronsMotif = 5; % # of neurons in each motif
 NumInhibitoryMotif = 1; % # of inhibitory neurons in motif
 NumMotifs = NumNeurons/NumNeuronsMotif; % # Neuron in Motif.
@@ -41,6 +41,7 @@ neuron.inhibitory = find(neuron.type == 1); % Array with all inhibitory neurons
 neuron.excitatory = find(neuron.type == 2); % Array with all Excitatory neurons
 neuron.motion.number = sort(neuron.excitatory(randperm(length(neuron.excitatory),floor(length(neuron.excitatory)*NeuronMotionRatio)))); % Neurons selected for motion
 neuron.nonmotion.number = ones(NumNeurons,1); neuron.nonmotion.number(neuron.motion.number) = 0; neuron.nonmotion.number = find(neuron.nonmotion.number == 1); % Non-Motion neurons
+neuron.motion.tuning = randi([1 8],size(neuron.motion.number));
 
 % Neuron Oscillation Properties
 neuron.oscillatory = neuron.inhibitory(randperm(numel(neuron.inhibitory), ceil(length(neuron.inhibitory)*Inhibitory_Oscillatory_Percentage)));
@@ -326,12 +327,12 @@ for i = 1:NumNeurons
         neuron.io.soma(i,j) = sum(sum(1./(x1+1).^2))/length(x1); % Mean 1/(r+1)^2 area component of soma. Units nA/mm^2
         neuron.io.axon(i,j) = sum(sum(1./(x2+1).^2))/length(x2); % Mean 1/(r+1)^2 area component of axon. Units nA/mm^2
         
-        %lightspread.calc = lightspread.averaged.a.*exp(lightspread.averaged.b.*Stim_Distance_Map(j,neuron.indices(i).soma)); % Light Intensity Calculation
-        %lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
-        %neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
+        lightspread.calc = lightspread.averaged.a.*((x1*1000).^lightspread.averaged.b); % Light Intensity Calculation in um
+        lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
+        neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
         
-        irridance = (lightspread.irridance.a) ./ (x1.^2 + lightspread.irridance.b.*x1 + lightspread.irridance.c); % Irridance value vs distance, in mW/mm^2
-        neuron.oo.soma(i,j) = sum(sum(irridance)); % Sum of irridance on neuron, in mW/mm^2
+        %irridance = (lightspread.irridance.a) ./ (x1.^2 + lightspread.irridance.b.*x1 + lightspread.irridance.c); % Irridance value vs distance, in mW/mm^2
+        %neuron.oo.soma(i,j) = sum(sum(irridance)); % Sum of irridance on neuron, in mW/mm^2
     end
     
 end
@@ -403,6 +404,7 @@ neuron.inhibitoryfactor = a.*randn(length(neuron.inhibitory),1) + b;
 neuron.inhibitoryfactor(neuron.inhibitoryfactor<0.01) = 0.01;
 neuron.inhibitoryfactor = (neuron.inhibitoryfactor/reference)/100; % Convert to percentage
 
+% Parameters from https://physoc.onlinelibrary.wiley.com/doi/full/10.1111/j.1469-7793.2003.00139.x
 a = 0.65; % EPSP
 b = 0.64;
 y = a.*randn(length(neuron.connections),1) + b;

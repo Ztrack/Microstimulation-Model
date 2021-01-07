@@ -1,4 +1,4 @@
-function output = thresholdfun(SEoutput,units,n,x)
+function output = thresholdfun(SEoutput,neuron,units,n,x)
 % Function to convert raw output to thresholds
 % output = num electrodes x num steps x num neurons x num simulations
 % output = 100 x 50 x 1000 x 2000 in typical settings
@@ -16,11 +16,11 @@ for i = 1:size(SEoutput,1) % For every electrode
     numactivated = zeros(1,size(SEoutput,2));
     
     for ii = 1:size(SEoutput,2) % For every step
-        activated = squeeze(SEoutput(i,ii,:) > max(max(SEoutput))*n);
-        numactivated(ii) = sum(activated) > x;
+        activated = squeeze(SEoutput(i,ii,neuron.motion.number) > max(max(SEoutput(:,:,neuron.motion.number)))*n); % Does it activate at least n% of all simulations?
+        numactivated(ii) = sum(activated) > x; % Does it activate at least x motion neurons?
     end
     
-    output(i) = units(find(numactivated == 1,1));
+    output(i) = units(find(numactivated == 1,1)); % Output is the stimulation parameter that accomplishes the above
 end
 
 

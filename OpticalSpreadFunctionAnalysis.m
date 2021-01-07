@@ -64,7 +64,7 @@ for i = 1:length(bestind)
     X(X == 0) = 1;
     Y = spreadata(lindex); % Data value at this point/index
     
-    f = fit(X',Y','Exp1');
+    f = fit(X',Y','Power1');
     a(i) = f.a; % 
     b(i) = f.b; % 
     %c(i) = f.c; % 
@@ -75,11 +75,11 @@ end
 % Plotting
 figure;
 x = 1:2000; % Distance
-Y1 = []; Y2 = [];
+Y1 = []; Y2 = []; Y = [];
 for i = 1:length(angles)
     %Y = a(i).*x.^b(i)+c(i);
     %Y(Y<0) = 0;
-    Y = a(i).*exp(b(i).*x); %+c(i).*exp(d(i).*x);
+    Y = a(i).*x.^b(i);
     plot(Y);
     hold on;
     Y1(i,:) = Y;
@@ -101,14 +101,21 @@ xlabel('Distance from origin um');
 ylabel('Magnitude of Power');
 legend('1-45','46-90','91-135','136-180','181-225','226-270','271-315','316-360');
 
+
 Y3 = mean(Y1);
-%lightspread.averaged = fit(x',Y3','Power2');
-%lightspread.equation = ['a*x^b+c'];
-lightspread.averaged = fit(x',Y3','Exp1');
-lightspread.equation = ['a*exp(b*x)'];
-lightspread.all.a = a;
-lightspread.all.b = b;
-%lightspread.all.c = c;
+a =-0.0383; b =26.3;
+Y3(201:end) = a.*x(201:end)+b;% Linear extrapolation due to short data
+Y3(Y3 <0) = 0;
+%Y3 = Y3/max(Y3); % Normalization
+
+% Fitting average + Extrapolated curve
+lightspread.averaged = fit(x',Y3','Power1');
+lightspread.equation = ['a*x^b'];
+%lightspread.averaged.a = 163;
+%lightspread.averaged.b = -0.5166;
+%lightspread.averaged.c = -33.21;
+%Y4 = lightspread.averaged.a.*(x.^lightspread.averaged.b);
+%Y4(Y4 <0) = 0;
 
 % General Averaged Case
 figure; 
@@ -120,6 +127,7 @@ Stim_Loc = zeros(500,500);
 Stim_Loc(250,250) = 1;
 Ed = bwdist(Stim_Loc); Ed(250,250) = 1;
 Stim_int = lightspread.averaged.a.*Ed.^lightspread.averaged.b;
+%lightspread.averaged.a.*exp(lightspread.averaged.b.*x) + lightspread.averaged.c.*exp(lightspread.averaged.d.*x);
 subplot(2,1,2); imagesc(Stim_int); colorbar; xlabel('um'); ylabel('um'); title('1mW Light Intensity Distribution');
 
 % Angle Specific
@@ -146,7 +154,7 @@ for i = 1:length(indata)
     [y2,x2] = ind2sub([size(Ed)],indata(i));
     theta = atan2d(y2-y1,x2-x1); % Angle from -180 to 180
     theta = round(mod(theta,360)); % Normalize angle & round to nearest
-    Stim_int(indata(i)) = lightspread.all.a(i).*Ed(indata(i)).^lightspread.all.b(i);
+    Stim_int(indata(i)) = lightspread.averaged.a(i).*Ed(indata(i)).^lightspread.averaged.b(i);
 end
 Stim_int = lightspread.averaged.a.*Ed.^lightspread.averaged.b;
 subplot(2,1,2); imagesc(Stim_int); colorbar; xlabel('um'); ylabel('um'); title('1mW Light Intensity Distribution');
@@ -178,4 +186,4 @@ y = (lightspread.irridance.a) ./ (x.^2 + lightspread.irridance.b.*x + lightsprea
 figure; plot(x,y);
 
 
-%save('lightspread.mat','lightspread');
+save('lightspread.mat','lightspread');

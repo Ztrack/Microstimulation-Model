@@ -2,84 +2,79 @@ clc; clear; close all;
 load('InitialConditionsFull.mat');
 
 n = 0.5; % Percent activation to count as 'activated'
-x = 20; % The current/opto step must activate this many motion tuned neurons to store the step
+x = 1; % The current/opto step must activate this many motion tuned neurons to store the step
 load('SEoutputc.mat');
-threshold.c = thresholdfun(output,units,n,x);
+threshold.c = thresholdfun(output,neuron,units,n,x);
 load('SEoutputo.mat');
-threshold.o = thresholdfun(output,units,n,x);
-%% Microstimulation + Optogenetics Optomization
-
-neuron.threshold.rs = 29.0; % Value determined for 95%, used in testing
-neuron.threshold.fs = 53.0; % % Value determined for 95%, used in testing
+threshold.o = thresholdfun(output,neuron,units,n,x);
 
 neuron.lambda = zeros(NumNeurons,1);
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
-NumTrials = 100;
-% lambdatype:
-lambdatype = 4; % 3 = MS + Optogenetics (all excitatory - affects all cells indiscriminately)
+NumTrials = 1000;
 neuron.IC = 0;
+CI = 95;
+
+neuron.lambdamod = lamdacombinedfun(neuron,zeros(size(neuron.type)),zeros(size(neuron.type)),1); % FR of neurons before any stimulation, includes synaptic connections
+neuron.lambdathreshold = lambdathresholdfinder(neuron,CI); % Thresholds that each neuron must reach to be 'activated'
 
 %% Matlab PSO options
+lambdatype = 4;
 
-if lambdatype == 1
+if any(lambdatype == [1 5])
     nvars = length(electrode.x);
     lb = zeros(1,nvars);
-    ub = [threshold.c].*1;
-    
-elseif lambdatype == 2
+    ub = [threshold.c]*.25; % best .15
+elseif any(lambdatype == [2 6])
     nvars = length(electrode.x);
     lb = zeros(1,nvars);
-    ub = [threshold.o]*1;
-    
+    ub = [threshold.o]*.1;
 elseif lambdatype == 3
-    
     nvars = length(electrode.x)*2;
     lb = zeros(1,nvars);
-    ub = [threshold.c.*.25 threshold.o.*.25];
-    
-elseif lambdatype == 4
+    ub = [threshold.c*.125 threshold.o*.1];
+elseif any(lambdatype == [4 7])
     nvars = length(electrode.x)*2;
     lb = zeros(1,nvars);
-    ub = [threshold.c.*.25 threshold.o.*.25];
+    ub = [threshold.c*.125 threshold.o*.10];
 end
 
 fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype,x);
 
-SwarmSize = 200; % Number of particles in swarm
+SwarmSize = 1000; % Number of particles in swarm
 maxiterations = 200; % Max number of iterations, including 'stall' iterations
-maxstalliterations = 250; % Max number of stalls allowable
+maxstalliterations = 200; % Max number of stalls allowable
 options = optimoptions('particleswarm','SwarmSize',SwarmSize,'MaxIterations',maxiterations,'MaxStallIterations',maxstalliterations,'UseParallel',true,'display','iter');
 [x,fval,allfval,exitFlag,output] = particleswarm(fun,nvars,lb,ub,options);
 
 %% Matlab PSO Iterative
 
-numrepeats = 5; % Number of times to repeat optimization
-SwarmSize = 200; % Number of particles in swarm
+numrepeats = 3; % Number of times to repeat optimization
+SwarmSize = 2000; % Number of particles in swarm
 maxiterations = 200; % Max number of iterations, including 'stall' iterations
 maxstalliterations = 200; % Max number of stalls allowable
 
 
 %fval_iter = nan(4,numrepeats,maxiterations); % Initialize storage matrix
-for i = 3
+for i = 1:7
     
     lambdatype = i;
-    if lambdatype == 1
+    if any(lambdatype == [1 5])
         nvars = length(electrode.x);
         lb = zeros(1,nvars);
-        ub = [threshold.c]*1;
-    elseif lambdatype == 2
+        ub = [threshold.c]*.25;
+    elseif any(lambdatype == [2 6])
         nvars = length(electrode.x);
         lb = zeros(1,nvars);
-        ub = [threshold.o]*1;
+        ub = [threshold.o]*.1;
     elseif lambdatype == 3
         nvars = length(electrode.x)*2;
         lb = zeros(1,nvars);
-        ub = [threshold.c*.25 threshold.o*.25];
-    elseif lambdatype == 4
+        ub = [threshold.c*.125 threshold.o*.1];
+    elseif any(lambdatype == [4 7])
         nvars = length(electrode.x)*2;
         lb = zeros(1,nvars);
-        ub = [threshold.c*.25 threshold.o*.25];
+        ub = [threshold.c*.125 threshold.o*.10];
     end
     fun = @(electrodestim) MotionRatioCombined(electrodestim,NumNeurons,neuron,lambdatype,x);
     options = optimoptions('particleswarm','SwarmSize',SwarmSize,'MaxIterations',maxiterations,'MaxStallIterations',maxstalliterations,'UseParallel',true,'display','off');
@@ -111,6 +106,24 @@ ylabel('Non-Motion / Motion Neuron Ratio');
 title('Optimization Performance');
 legend('MS','Opto','MS + Opto (+all)','MS + Opto (-all)','MS + Opto (+all) + Opto (-all)');
 
+% Plot final results
+figure;
+for i = 1:4
+x = i;
+data = [mean(fval_iter(i,:,end))];
+errhigh = [std(fval_iter(i,:,end))];
+errlow = [std(fval_iter(i,:,end))];
+bar(x,data);
+hold on;
+er = errorbar(x,data,errlow,errhigh);    
+er.Color = [0 0 0];                            
+er.LineStyle = 'none';  
+hold on;
+end
+xlabel('Stimulation Strategy');
+ylabel('Non-Motion / Motion Neuron Ratio');
+title('Optimization Performance');
+legend('MS','Opto','MS + Opto (+all)','MS + Opto (-all)');
 %% Matlab PSO Iterative Across #'s
 
 for i = 1:5:250
@@ -424,7 +437,7 @@ end
 
 ElectrodeNo = 1:length(ec);
 Ie_Axon_Neurons = zeros(NumNeurons,1); % Initialize current vector
-Ie_Soma_Neurons = zeros(NumNeurons,1);
+Ie_Soma_Neurons = zeros(NumNeurons,1); % Initialize current vector
 Il_Soma_Neurons = zeros(NumNeurons,1); % Initialize luminous intensity
 
 for i = 1:length(ec) % Summation of current for every neuron component by every electrode & its corresponding current
@@ -437,12 +450,10 @@ Ie_Neurons = Ie_Soma_Neurons + Ie_Axon_Neurons; % Summation of current directly 
 Il_Neurons = Il_Soma_Neurons; % Summation of luminous intensity directly from stimulus.
 
 % Calculate Lambda Hat
-[lambdahat,lambdamod] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,lambdatype);
+[lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,lambdatype);
 
-% Threshold Method:
-Neuron_Activated = zeros(NumNeurons,1);
-Neuron_Activated(neuron.excitatory) = lambdahat(neuron.excitatory) > lambdamod(neuron.excitatory) + (neuron.threshold.rs-20);
-Neuron_Activated(neuron.inhibitory) = lambdahat(neuron.inhibitory) > lambdamod(neuron.inhibitory) + (neuron.threshold.fs-40);
+% Threshold Determination:
+Neuron_Activated = lambdahat > neuron.lambdathreshold;
 
 % Ratio Calculation
 

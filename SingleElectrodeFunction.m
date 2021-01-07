@@ -9,7 +9,6 @@ calctype = 1; % If 1, this is the standard 4:1 ratio. if 2, this is a 5:X ratio 
 Motion_Axon = 0; % if set =1, enabled, connections between relevant motion neurons is established
 Oscillatory_Behavior = 1; % is set =1, .33 of all inhibitory neurons will use Oscillatory poisson function
 Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
-lambdatype = 1; % What type of calcultion stimulus is presented. 1= current, 2 = opsin
 axonswitch = 1; % if 0, then no axon is added. If 1, then axon is used in summation.
 
 % Apply Features
@@ -34,22 +33,23 @@ NumTrials = 100;
 %inhibitoryfactor = [0.01 0.03 0.1 0.125 0.15 0.2]; % at rate = 40hz (for inhibitory), there is a X% inhibition factor active. This increases linearly with lambda.
 inhibitoryfactor = [0.01];
 NumInhibitoryMotif = 2; % Number of inhibitory neurons, if calctype = 2
+neuron.lambdamod = lamdacombinedfun(neuron,zeros(size(neuron.type)),zeros(size(neuron.type)),1); % FR of neurons before any stimulation, includes synaptic connections
 
 %% Loop Start
-h = 400; % Steps
+h = 50; % Steps
 numrepeats = 3; % Number of overall repeats
 ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
 ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
 
-for kk = 1:1
+for kk = 1:2
     lambdatype = kk;
     
     if lambdatype == 1
-        unitsmin = 1;
+        %unitsmin = 1;
         unitsmax = 50;
     else
-        unitsmin = .0001;
-        unitsmax = .04;
+        %unitsmin = .0001;
+        unitsmax = .001;
     end
     I0 = linspace(0,unitsmax,h);
     
@@ -71,8 +71,8 @@ for kk = 1:1
         neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
         neuron.inhibitory = find(neuron.type == 1); % New Inhibitory List
         neuron.excitatory = find(neuron.type == 2);
-        neuron.lambdamod(neuron.type == 1) = 40;
-        neuron.lambdamod(neuron.type == 2) = neuron.lambda(2) - neuron.lambda(1)*(neuron.lambda(1).*(inhibitoryfactor(1)/40));
+        neuron.neuron.lambdamod(neuron.type == 1) = 40;
+        neuron.neuron.lambdamod(neuron.type == 2) = neuron.lambda(2) - neuron.lambda(1)*(neuron.lambda(1).*(inhibitoryfactor(1)/40));
         
     end
     
@@ -88,7 +88,7 @@ for kk = 1:1
             Il_Neurons = neuron.oo.soma(:,ElectrodeNo).*I0(ii); % Summation of current directly from stimulus. AU irridance
             
             % Calculate neuron.lambda Change for poisson process
-            [lambdahat,lambdamod] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,lambdatype);
+            [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,lambdatype);
             
             % Finding RB for each neuron
             
@@ -97,7 +97,7 @@ for kk = 1:1
                     
                     Lambda_Hat_Spikes = Simple_PoissonGen(lambdahat(i), dt, NumTrials);
                     Y = prctile(Lambda_Hat_Spikes,bpct); % Calculates bottom xth percentile
-                    if Y > lambdamod(i)+1
+                    if Y > neuron.lambdamod(i)+1
                         Neuron_RB1(i) = I0(ii);
                     end
                 end
