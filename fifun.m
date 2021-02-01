@@ -1,4 +1,4 @@
-function [frc,fro,fro2] = fifun(neuron,Ie_Neurons,Il_Neurons,lambdatype)
+function [frc,fro,fro2] = fifun(neuron,params,Ie_Neurons,Il_Neurons,lambdatype)
 
 % y1 = Firing rate change due to current
 % y2 = Firing rate change due to Optogenetics
@@ -46,12 +46,13 @@ frc = zeros(length(Ie_Neurons),1); % Initialize firing rate due to current
 %         end
 % end
 
-if lambdatype == 1 | lambdatype == 5 | lambdatype == 7 % Subthreshold case
+if lambdatype == 3 | lambdatype == 5 | lambdatype == 7 % Subthreshold case
     frc(Ie_Neurons < 2.2582) = Ie_Neurons(Ie_Neurons < 2.2582)/2.2582;
     frc(Ie_Neurons >= 2.2582) = 29.94.*sqrt(Ie_Neurons(Ie_Neurons >= 2.2582)-2.2582);
 else % Supathreshold case
     frc = 29.94.*sqrt(Ie_Neurons-2.2582);
 end
+r = isreal(frc);
 
 %% Luminous Intensity
 % High-speed mapping of synaptic connectivity using photostimulation in Channelrhodopsin-2 transgenic mice

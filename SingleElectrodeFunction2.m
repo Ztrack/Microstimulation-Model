@@ -5,90 +5,95 @@ clearvars; clc;
 % the center electrode.
 
 % Features
-calctype = 1; % If 1, this is the standard 4:1 ratio. if 2, this is a 5:X ratio with X being number of inhibitory
-Motion_Axon = 1; % if set =1, enabled, connections between relevant motion neurons is established
+calctype = 1;
+NumInhibitoryMotif = 2; % Number of inhibitory neurons, if calctype = 2
 Oscillatory_Behavior = 0; % is set =1, .33 of all inhibitory neurons will use Oscillatory poisson function
 Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
-lambdatype = 1; % What type of calcultion stimulus is presented. 1= current, 2 = opsin
+axonswitch = 1; % if 0, then no axon is added. If 1, then axon is used in summation.
 
 % Apply Features
-if calctype == 1 %load initial condition
-    load('InitialConditionsFull.mat') % 4:1 Excitatory to inhibitory ratio
-else
-    load('InitialConditionsFullB.mat') % Multiple Inhibitory neurons present
-end
+load('InitialConditionsFull.mat') % 4:1 Excitatory to inhibitory ratio
 if Directional_Current_Modifier == 0 % Directionality component to current summation (Based on axon hilic)
     neuron.dirmult(:,:) = 1;
 end
-if Motion_Axon == 0
-    I0_Motion_Neurons = zeros(NumNeurons,length(electrode.x));
-end
 
 % Parameters
+h = 50; % Steps
+numrepeats = 3; % Number of overall repeats
+NumTrials = 20;
 bpct = 05; % Bottom Percentile for Rheobase calculation. 50 for 50%, 05 for 95% CI.
-NumTrials = 20; % Number of trials per poisson process
-simulation = 4; % Number of overall repeats for monte carle simulation. *EVEN NUMBER EASIER
-neuron.lambda = zeros(NumNeurons,1);
+neuron.lambda = zeros(params.numneurons,1);
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
-neuron.lambdamod = lamdacombinedfun(neuron,zeros(size(neuron.type)),zeros(size(neuron.type)),1); % FR of neurons before any stimulation, includes synaptic connections
+
+% Calculations
+%neuron.lambdamod = lamdacombinedfun(neuron,params,zeros(size(neuron.type)),zeros(size(neuron.type)),1); % FR of neurons before any stimulation, includes synaptic connections
+parfor i = 1:NumTrials
+    lambdamod(i,:) = IntegrateAndFire(neuron,params,zeros(params.numneurons,1)); % FR of neurons before any stimulation, includes synaptic connections
+end
+neuron.lambdamod = mean(lambdamod,1);
 
 %% Loop Start
-h = 10; % number of steps for current/LI
+solrb2.e1 = NaN(length(electrode.x),numrepeats,params.numneurons); % Current RB init
+solrb2.o1 = NaN(length(electrode.x),numrepeats,params.numneurons); % Opto RB init
 
-% if lambdatype == 1
-%     unitsmax = 30000; % Point at which 100% of neurons are activated
-%     units50 = 10000; % Point at which 50% of neurons are activated
-% else
-%     unitsmax = 100000;
-%     units50 = 30000; 
-% end
-% units = linspace(0,units50,h*.8);  % Current OR liminous intensity Steps
-% units = [units linspace(units50+unitsmax*.2*h,unitsmax,h*.2)];
-
-output = zeros(length(electrode.x),h,NumNeurons); % Stores poisson spike rate for every output, logical matrix
-
-for k = 1:2
-    lambdatype = k;
-    if lambdatype == 1
-        unitsmax = 10;
-    else
-        unitsmax = .001;
-    end
-    units = linspace(0,unitsmax,h);
-    
-parfor j = 1:length(electrode.x) % Iterate every electrode
-    output1 = zeros(h,NumNeurons);
-    ElectrodeNo = j;
-    
-    for i = 1:length(units)
+for kk = 1:length(electrode.x)
+    for jj = 1:numrepeats
         
-        Ie_Neurons = neuron.io.soma(:,ElectrodeNo).*neuron.dirmult(:,ElectrodeNo).*units(i) + neuron.io.axon(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus + backpropogated up by axons. AU Current
-        Il_Neurons = neuron.oo.soma(:,ElectrodeNo).*units(i); % Summation of current directly from stimulus. AU luminous intensity
-        
-        % Calculate neuron.lambda Change for poisson process
-        [lambdahat] = lamdacombinedfun(neuron,Ie_Neurons,Il_Neurons,lambdatype);
-        BestNeurons = lambdahat >= median(lambdahat); % Calculate only the easiest to activate 50%
-        
-        % Calculate Poisson spike rates for each neuron
-        for ii = 1:NumNeurons
-            if BestNeurons(ii) == 1
-                y = Simple_PoissonGen2(lambdahat(ii), dt, NumTrials,simulation,bpct) > neuron.lambdamod(ii)+1; % Calculate Lambda
-                output1(i,ii) = sum(y);
-                %outputactivated(ii) = sum(y) >= simulation.*(.5); % Useful for debugging
+        for lambdatype = 1:2
+            
+            Neuron_RB = NaN(1,params.numneurons); % Rhoebase for every neuron, stored as I0 which causes neuron.lambda+1 spike
+            
+            if lambdatype == 1
+                unitsmin = 0;
+                unitsmax = 1200;
+            else
+                unitsmin = 0;
+                unitsmax = 0.25;
+            end
+            I0 = linspace(unitsmin,unitsmax,h);
+            
+            for ii = 1:length(I0)
+                
+                Ie_Neurons = neuron.io.soma(:,kk).*neuron.dirmult(:,kk).*I0(ii) + neuron.io.axon(:,kk).*I0(ii).*axonswitch; % Summation of current directly from stimulus + backpropogated up by axons. AU Current
+                Il_Neurons = neuron.oo.soma(:,kk).*I0(ii); % Summation of current directly from stimulus. AU irridance
+                
+                % Calculate neuron.lambda Change
+                [lambdahat] = lamdacombinedfun(neuron,params,Ie_Neurons,Il_Neurons,lambdatype); % Change in firing rate (Hz) due to electrical stimulation or optogenetics
+                
+                % Run spike generator
+                out_FR = zeros(NumTrials,params.numneurons);
+                parfor i = 1:NumTrials
+                    out_FR(i,:) = IntegrateAndFire(neuron,params,lambdahat);
+                end
+                
+                % Determine if neuron spiked 1 above baseline
+                for i = 1:params.numneurons
+                    if isnan(Neuron_RB(i)) % Continue only if nan, saves calculation time
+                        Y = prctile(out_FR(:,i),bpct); % Calculates bottom xth percentile
+                        if Y > neuron.lambdamod(i)+1
+                            Neuron_RB(i) = I0(ii); % Update Neuron Rhoebase
+                        end
+                    end
+                end
+                if sum(isnan(Neuron_RB)) <= params.numneurons*.20
+                    break
+                end
+            end
+            
+            % Save Data
+            if lambdatype == 1
+                solrb2.e1(kk,jj,:) = Neuron_RB;
+                solrb2.e.I0 = I0;
+                
+            elseif lambdatype == 2
+                solrb2.o1(kk,jj,:) = Neuron_RB;
+                solrb2.o.I0 = I0;
             end
         end
         
     end
-    
-    output(j,:,:) = output1; % Output result for this parfor loop
-    disp(['Electrode ' num2str(j) ' done']);
 end
 
-
-if lambdatype == 1
-    save('SEoutputc.mat','output','units','-v7.3'); % Single electrode results output
-elseif lambdatype == 2
-    save('SEoutputo.mat','output','units','-v7.3'); % Single electrode results output
-end
-end
+%% Export
+save('solrb2.mat','solrb2');

@@ -3,9 +3,11 @@
 clearvars; clc;
 
 dt = 1/1000;
-numneurons = 2500;
+numneurons = 900;
 EIratio = 0.80;
 C = 1; % constant determining the connectivity probability.
+T_total = 1000; % Time in ms for experiment length, number of time bins
+T_steps = 1; % Step length in ms
 
 % Square area grid
 % Given a simple square grid with 2500 neurons, the grid will be 50x50 long
@@ -33,8 +35,8 @@ neuron_type = neuron_type(perm); % Randomize Excitatory and inhibitory neuron lo
 % Synaptic Weights
 % The weights (Wji) of these connections were dependent on the type (excitatory or inhibitory) of the presynaptic (i) and postsynaptic (j) neuron
 WIE = 0; % Inhibitory-Excitatory synaptic weight
-WEE = 0.1; % Excitatory-Excitatory synaptic weight
-WEI = -WIE*10; % Excitatory - Inhibitory synaptic weight 
+WEE = 1/((72.36-41.40)/0.65); % Excitatory-Excitatory synaptic weight
+WEI = -1/((72.36-41.40)/3.48); % Excitatory - Inhibitory synaptic weight 
 WII = 0; % Inhibitory-Inhibitory synaptic weight;
 
 % Synaptic Weight vector
@@ -58,36 +60,40 @@ end
 % Spike Model
 I = zeros(numneurons,1); % Initialize synaptic input from other neurons. 0 at time start.
 S = zeros(numneurons,1); % Initialize a binary spiking vector of the neurons spiking in previous time step
-tI = 9; % ms time constant
+tI = 10; % ms time constant for synaptic decay
 dIdt = zeros(numneurons,1); % Initialize Synaptic decay
 dPdt = zeros(numneurons,1); % Initialize Synaptic decay
 Ps = zeros(numneurons,1); % Initialize probability of spiking
-% Neuron type data taken from https://www.neuroelectro.org/
-tP = zeros(numneurons,1); tP(neuron_type == 1) = 9.57; tP(neuron_type == 2) = 19.73; % initialize probability of spiking decay in Hz
-Pr = zeros(numneurons,1); Pr(neuron_type == 1) = 5.32; Pr(neuron_type == 2) = 0.67;% probability of spiking reset in Hz
 raster = zeros(1000,length(S));
+nbins = T_total/T_steps;
 
-Ps = Pr;
-for t = 1:1:1000
+% Neuron type data taken from https://www.neuroelectro.org/
+tP = zeros(numneurons,1); tP(neuron_type == 1) = 9.57; tP(neuron_type == 2) = 19.73; % Membrane Time constant (ms)- Time constant for the membrane to repolarize after a small current injection of fixed amplitude and duration
+Pr = zeros(numneurons,1); Pr(neuron_type == 1) = 40/nbins; Pr(neuron_type == 2) = 20/nbins; % Background spiking probability (Hz) - AP discharge rate in the absence of current injection or a stimulus
+%lambdahat = randi([0 10],numneurons,1)/bins; % Random current injection
+lambdahat = (zeros(numneurons,1)+0)/nbins;
+Ps = Pr + lambdahat;
+
+for t = 1:T_steps:T_total
     % Each time step (dt) of 1 ms starts with each neuron, i, updating Ii with received input from any of the set of connected neurons, together with an exponential synaptic decay, which can either be excitatory or inhibitory.
     for i = 1:numneurons
-        I(i) = I(i) + sum(neuron_weights(i,:)'.*S); % if previous bin spikes, S=1 applying a synaptic effect from that neuron.
-        dIdt(i) = (0 - I(i))/tI; % Synaptic decay with tI time factor
+        
+        % Update Synaptic Weights
+        I(i) = I(i) + (sum(neuron_weights(i,:)'.*S)/nbins); % if previous bin spikes, S=1 applying a synaptic effect from that neuron.
+    
+        % Probability updating
+        dIdt(i) = (0 - I(i))/tP(i); % Spiking decay
+        
     end
-    I = I + dIdt; % Apply synaptic decay
     
-    % Probability-based spiking
-    for i = 1:numneurons
-        Ps(i) = Ps(i) + I(i); % update spiking probability with synaptic weight
-        dPdt(i) = (Pr(i) - Ps(i))/tP(i); % Spiking decay
-    end
-    Ps = Ps + dPdt; % Apply spiking decay
-    
-    S = Ps > rand(numneurons,1)*100; % We determine whether the neuron spikes with the probability PS and update the spiking vector for the next time step
-    Ps(S == 1) = 0; %If a neuron spikes, the probability is reset to the reset value
-    I(S == 1) = 0; % Reset synaptic strength
-    
+    % Determine Spiking
+    S = Ps + I > rand(numneurons,1); % We determine whether the neuron spikes with the probability PS and update the spiking vector for the next time step
+   
+    I = I + dIdt; % Apply spiking decay
+    Ps(S == 1) = Pr(S == 1) + lambdahat(S == 1); %If a neuron spikes, the probability is reset to the reset value
+    I(S == 1) = 0; % Reset synaptic strength if spike occured
     raster(t,:) = S;
+    
 end
 
 figure;
@@ -112,3 +118,19 @@ end
 title('Raster Data');
 ylabel('Neuron Number');
 xlabel('Time (ms)');
+
+figure;
+x = 1:2;
+sumspikes = sum(raster,1);
+y = [mean(sum(raster(:,neuron_type == 1),1)) mean(sum(raster(:,neuron_type == 2),1))];
+ystd = [std(sum(raster(:,neuron_type == 1),1)) std(sum(raster(:,neuron_type == 2),1))];
+y95 = 1.96*[ystd(1)/sqrt(sum(neuron_type==1)) ystd(2)/sqrt(sum(neuron_type==2))];
+bar(x,y); hold on;
+er = errorbar(x,y,ystd,ystd);    
+er.Color = [0 0 0];                            
+er.LineStyle = 'none';
+title('Population Firing Rate');
+ylabel('firing rate (Hz)');
+xlabel('Inhibitory                Excitatory');
+ylim([0 max(y)+10]);
+

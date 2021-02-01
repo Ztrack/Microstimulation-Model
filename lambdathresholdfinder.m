@@ -7,9 +7,8 @@ function [lambdathreshold] = lambdathresholdfinder(neuron,CI)
 % spike train generator using the res resolution parameter. Typical value
 % for res is rounded to the nearest 0.01. 
 
-NumTrials = 1000;
+NumTrials = 20;
 dt = 1/1000;
-%neuron.lambdamod(neuron.lambdamod > 300) = 300; % Adjusts lambdamod to fit within limits
 lambda = round(min(neuron.lambdamod),1):0.1:round(max(neuron.lambdamod*2),1);
 Y = nan(size(lambda));
 lambdathreshold = nan(length(neuron.lambdamod),1);
