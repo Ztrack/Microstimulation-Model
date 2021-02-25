@@ -5,20 +5,21 @@ clearvars; clc;
 % the center electrode.
 
 % Features
-calctype = 1;
-NumInhibitoryMotif = 2; % Number of inhibitory neurons, if calctype = 2
-Oscillatory_Behavior = 0; % is set =1, .33 of all inhibitory neurons will use Oscillatory poisson function
 Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
 axonswitch = 1; % if 0, then no axon is added. If 1, then axon is used in summation.
+neuronweights = 1; % If neuron weights apply, leave as 1.
 
 % Apply Features
 load('InitialConditionsFull.mat') % 4:1 Excitatory to inhibitory ratio
 if Directional_Current_Modifier == 0 % Directionality component to current summation (Based on axon hilic)
     neuron.dirmult(:,:) = 1;
 end
+if neuronweights == 0
+    neuron.weight.matrix = zeros(params.numneurons,params.numneurons);
+end
 
 % Parameters
-h = 50; % Steps
+h = 10; % Steps
 numrepeats = 2; % Number of overall repeats
 NumTrials = 100;
 bpct = 05; % Bottom Percentile for Rheobase calculation. 50 for 50%, 05 for 95% CI.
@@ -32,8 +33,9 @@ parfor i = 1:NumTrials
     lambdamod(i,:) = IntegrateAndFire(neuron,params,zeros(params.numneurons,1)); % FR of neurons before any stimulation, includes synaptic connections
 end
 neuron.lambdamod = mean(lambdamod,1);
-ElectrodeDist = sqrt((params.sx/2-electrode.x).^2 + (params.sy/2-electrode.y).^2);
-ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
+%ElectrodeDist = sqrt((params.sx/2-electrode.x).^2 + (params.sy/2-electrode.y).^2);
+%ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
+ElectrodeNo = 45;
 
 %% Loop Start
 solrb.e1 = NaN(numrepeats,params.numneurons); % Current RB init
@@ -46,10 +48,10 @@ for jj = 1:numrepeats
         
         if lambdatype == 1
             unitsmin = 0;
-            unitsmax = 1200;
+            unitsmax = 40;
         else
             unitsmin = 0;
-            unitsmax = 0.25;
+            unitsmax = 0.005;
         end
         I0 = linspace(unitsmin,unitsmax,h);
         

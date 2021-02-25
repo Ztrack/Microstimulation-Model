@@ -1,7 +1,7 @@
 function [lambdahat] = lamdacombinedfun(neuron,params,Ie_Neurons,Il_Neurons,lambdatype)
 
 % Calculate firing rates frc,fro
-[frc,fro,fro2] = fifun2(neuron,params,Ie_Neurons,Il_Neurons,lambdatype);
+[frc,fro,fro2] = fifun(neuron,params,Ie_Neurons,Il_Neurons,lambdatype);
 
 % lambdatype:
 % 1 = MS only

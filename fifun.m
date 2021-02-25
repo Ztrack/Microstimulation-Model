@@ -1,8 +1,5 @@
 function [frc,fro,fro2] = fifun(neuron,params,Ie_Neurons,Il_Neurons,lambdatype)
 
-% y1 = Firing rate change due to current
-% y2 = Firing rate change due to Optogenetics
-
 % lambdatype:
 % 1 = MS only, supathreshold
 % 2 = opto only, supathreshold
@@ -20,95 +17,103 @@ function [frc,fro,fro2] = fifun(neuron,params,Ie_Neurons,Il_Neurons,lambdatype)
 
 frc = zeros(length(Ie_Neurons),1); % Initialize firing rate due to current
 
-% for i = 1:length(neuron.lambda)
-%     if neuron.type(i) == 1 & any(lambdatype == [1 2 4]) & Ie_Neurons(i) > 0.162 % Inhibitory type
-%         frc(i) = 31.2.*sqrt(Ie_Neurons(i)-.162);
-%     elseif neuron.type(i) == 2 & any(lambdatype == [1 2 4]) & Ie_Neurons(i) > 2.2582 % Excitatory type
-%         frc(i) = 29.94.*sqrt(Ie_Neurons(i)-2.2582);
-%     
-%     % Case 3 - subthreshold
-%     elseif neuron.type(i) == 1 & lambdatype == 3 & Ie_Neurons(i) > 0.162 % Inhibitory type
-%         frc(i) = 31.2.*sqrt(Ie_Neurons(i)-.162);
-%     elseif neuron.type(i) == 2 & lambdatype == 3 & Ie_Neurons(i) > 2.2582 % Excitatory type
-%         frc(i) = 29.94.*sqrt(Ie_Neurons(i)-2.2582);
-%     elseif neuron.type(i) == 1 & lambdatype == 3 & Ie_Neurons(i) < 0.162 % Inhibitory type
-%         frc(i) = (Ie_Neurons(i)/0.162);
-%     elseif neuron.type(i) == 2 & lambdatype == 3 & Ie_Neurons(i) < 2.2582 % Excitatory type
-%         frc(i) = (Ie_Neurons(i)/2.2582);
-%     end
-% end
+a1 = 31.2; % Inhibitory slope
+a2 = 29.94; % Excitatory Slope
+thresh1 = 0.162; % Inhibitory Threshold
+thresh2 = 2.2582; % Excitatory Threshold
 
-% for i = 1:length(neuron.lambda)
-%         if any(lambdatype == [3 5 7]) & Ie_Neurons(i) < 2.2582 % Subthreshold case, EPSP is active
-%             frc(i) = (Ie_Neurons(i)/2.2582);
-%         elseif Ie_Neurons(i) > 2.2582 % Supathreshold case, no EPSP
-%             frc(i) = 29.94.*sqrt(Ie_Neurons(i)-2.2582);
-%         end
-% end
-
-if lambdatype == 3 | lambdatype == 5 | lambdatype == 7 % Subthreshold case
-    frc(Ie_Neurons < 2.2582) = Ie_Neurons(Ie_Neurons < 2.2582)/2.2582;
-    frc(Ie_Neurons >= 2.2582) = 29.94.*sqrt(Ie_Neurons(Ie_Neurons >= 2.2582)-2.2582);
-else % Supathreshold case
-    frc = 29.94.*sqrt(Ie_Neurons-2.2582);
+for i = 1:length(neuron.type)
+    
+    % General Case
+    if neuron.type(i) == 1 & Ie_Neurons(i) > thresh1 % Inhibitory type
+        frc(i) = a1.*sqrt(Ie_Neurons(i)-.162);
+    elseif neuron.type(i) == 2 & Ie_Neurons(i) > thresh2 % Excitatory type
+        frc(i) = a2.*sqrt(Ie_Neurons(i)-thresh2);
+    
+    % Subthreshold Cases       
+    elseif neuron.type(i) == 1 & Ie_Neurons(i) < thresh1 & any(lambdatype == [3 5 7]) % Inhibitory type, less than threshold
+        frc(i) = Ie_Neurons(i)/thresh1;
+    elseif neuron.type(i) == 2 & Ie_Neurons(i) < thresh2 & any(lambdatype == [3 5 7])% Excitatory type, less than threshold
+        frc(i) = Ie_Neurons(i)/thresh2;
+    end
 end
-r = isreal(frc);
 
 %% Luminous Intensity
 % High-speed mapping of synaptic connectivity using photostimulation in Channelrhodopsin-2 transgenic mice
 % H. Wang, et al. 2007
 
-fro = zeros(length(Ie_Neurons),1);
-fro2 = zeros(length(Ie_Neurons),1);
-n = 0.82; % Hill coefficient
-Imax = 26.6; % Maximum FR
-k = 0.49; % half maximal light sensitivity
-% fro = Imax .* ((Il_Neurons.^n)./((k.^n)+(Il_Neurons.^n)));
+fro = zeros(length(Il_Neurons),1);
+fro2 = zeros(length(Il_Neurons),1);
 
-% Sanity check:
-% x = 0:0.002:.1;
-% fro = Imax .* ((x.^n)./((k.^n)+(x.^n)));
+% Hill Equation Parameters
+n = 0.82; % Hill coefficient
+k = 0.49; % half maximal light sensitivity
+Imax = 26.6; % Maximum FR
+shift_x = -.05739; % Threshold value for inhibitory neuron
+shift_y = 1.042;
+shift_x2 = -0.8; % Threshold value for excitatory neuron
+shift_y2 = 1;
+
+for i = 1:length(Il_Neurons)
+    
+    % General Supathreshold Case
+    if neuron.type(i) == 1 & Il_Neurons(i) > abs(shift_x) % Inhibitory type
+        fro(i) = Imax .* (((Il_Neurons(i)+shift_x).^n)./((k.^n)+((Il_Neurons(i)+shift_x).^n)))*shift_y;
+    elseif neuron.type(i) == 2 & Il_Neurons(i) > abs(shift_x2) % Excitatory type
+        fro(i) = Imax .* (((Il_Neurons(i)+shift_x2).^n)./((k.^n)+((Il_Neurons(i)+shift_x2).^n)))*shift_y2;
+    
+    % Subthreshold Cases       
+    elseif neuron.type(i) == 1 & Il_Neurons(i) < abs(shift_x) & any(lambdatype == [3 6 7]) % Inhibitory type, less than threshold
+        fro(i) = Il_Neurons(i)/shift_x;
+    elseif neuron.type(i) == 2 & Il_Neurons(i) < abs(shift_x2) & any(lambdatype == [3 6 7])% Excitatory type, less than threshold
+        fro(i) = Il_Neurons(i)/shift_x2;
+    end
+    
+end
+
+%% Sanity check 1:
+% Il_Neurons = 0.01:0.01:10;
+% n = 0.82; % Hill coefficient
+% k = 0.49; % half maximal light sensitivity
+% Imax = 26.6; % Maximum FR
+% 
+% % Example Inhibitory neuron
+% shift_x = -.05739;
+% shift_y = 1.042;
+% fro = Imax .* (((Il_Neurons+shift_x).^n)./((k.^n)+((Il_Neurons+shift_x).^n)))*shift_y;
+% fro(Il_Neurons < abs(shift_x)) = nan;
+% 
+% % Example Excitatory Neuron
+% shift_x = -0.8;
+% shift_y = 1;
+% fro2 = Imax .* (((Il_Neurons+shift_x).^n)./((k.^n)+((Il_Neurons+shift_x).^n)))*shift_y;
+% fro2(Il_Neurons < abs(shift_x)) = nan;
+% 
+% figure; 
+% plot(Il_Neurons,fro); hold on; plot(Il_Neurons,fro2); 
+% legend('inhib','excit'); xlabel('Luminance mW/mm^2'); ylabel('Firing Rate (Hz)');
+% 
+% %% Sanity check 2:
+% figure;
+% x = 0:0.002:3;
+% Imax = 26.6; % Maximum FR
+% fro = Imax .* ((x.^n)./((k.^n)+(x.^n))); % Original hill eq and parameters
 % plot(x,fro);
 % hold on;
-% Imax = 26.6; % Maximum FR
-% fro = Imax .* ((x.^n)./((k.^n)+(x.^n)));
-% plot(x,fro);
-% legend('Imax 300','Imax 26'); xlabel('Luminance mW/mm2'); ylabel('Firing Rate');
-
-% for i = 1:length(neuron.lambda)
-%         if (any(lambdatype == [3 6])) & (Il_Neurons(i) < .10) % Subthreshold case - EPSP is active
-%             fro(i) = (Il_Neurons(i)/.10);
-%         elseif Il_Neurons(i) > .10 % Supathreshold
-%             fro(i) = Imax .* ((Il_Neurons(i).^n)./((k.^n)+(Il_Neurons(i).^n)));
-%         else
-%             fro(i) = 0; % Did not reach threshold in the non-subthreshold case
-%         end
-% end
 % 
-% if lambdatype == 7
-%     fro2 = zeros(length(Ie_Neurons),1); % Initiate second opsin
-%     for i = 1:length(neuron.lambda)
-%         if (Il_Neurons(i) < .10) % Subthreshold case active
-%             fro2(i) = (Il_Neurons(i)/.10);
-%         elseif Il_Neurons(i) > .10 % Supathreshold
-%             fro2(i) = Imax .* ((Il_Neurons(i).^n)./((k.^n)+(Il_Neurons(i).^n)));
-%         else
-%             fro2(i) = 0; % Did not reach threshold in the non-subthreshold case
-%         end
-%     end
-% end
+% % Adjusted parameters for excitatory neuron
+% n = n;
+% k = k;
+% fro = Imax .* (((x-.8).^n)./((k.^n)+((x-.8).^n)));
+% fro(x<0.8) = 0;
+% plot(x,fro);
+% 
+% % Adjusted Parameters for inhibitory neuron
+% fro = Imax .* (((x-.05739).^n)./((k.^n)+((x-.05739).^n)))*1.042;
+% fro(x<0.05739) = 0;
+% plot(x,fro);
+% legend('Original Hill Eq','Adjusted Excitatory','Adjusted Inhibitory'); xlabel('Luminance mW/mm2'); ylabel('Firing Rate');
 
 
-if lambdatype == 3 | lambdatype == 6 % Subthreshold case active
-    fro(Il_Neurons < .10) = (Il_Neurons(Il_Neurons < .10)/.10);
-    fro(Il_Neurons >= .10) = Imax .* ((Il_Neurons(Il_Neurons >= .10).^n)./((k.^n)+(Il_Neurons(Il_Neurons >= .10).^n)));
-else % Supathreshold
-    fro = Imax .* ((Il_Neurons.^n)./((k.^n)+(Il_Neurons.^n)));
-end
-
-if lambdatype == 7 % Subthreshold case active
-    fro2(Il_Neurons < .10) = (Il_Neurons(Il_Neurons < .10)/.10);
-    fro2(Il_Neurons >= .10) = Imax .* ((Il_Neurons(Il_Neurons >= .10).^n)./((k.^n)+(Il_Neurons(Il_Neurons >= .10).^n)));
-end
 
 end

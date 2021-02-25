@@ -1,11 +1,11 @@
-clear all; clc;
+clearvars; clc;
 
 %% Initial Condition Parameters
 
 % Neuron properties
 params.neuron.radii = 5; % in micrometers
 params.electrode.radii = 10; % in micrometers
-params.theta_threshold = 45; % angle difference threshold - If the neuron axon is out of phase by at least this much to the current-stimulus, the electric field acting on the neuron is weakened to 25%.
+params.theta_threshold = 90; % angle difference threshold - If the neuron axon is out of phase by at least this much to the current-stimulus, the electric field acting on the neuron is weakened to 25%.
 
 % Population Properties
 params.numneurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
@@ -332,8 +332,6 @@ for i = 1:params.numneurons
         lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
         neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
         
-        %irridance = (lightspread.irridance.a) ./ (x1.^2 + lightspread.irridance.b.*x1 + lightspread.irridance.c); % Irridance value vs distance, in mW/mm^2
-        %neuron.oo.soma(i,j) = sum(sum(irridance)); % Sum of irridance on neuron, in mW/mm^2
     end
     
 end
