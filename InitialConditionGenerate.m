@@ -6,6 +6,7 @@ clearvars; clc;
 params.neuron.radii = 5; % in micrometers
 params.electrode.radii = 10; % in micrometers
 params.theta_threshold = 90; % angle difference threshold - If the neuron axon is out of phase by at least this much to the current-stimulus, the electric field acting on the neuron is weakened to 25%.
+params.axonhillockradii = 1;
 
 % Population Properties
 params.numneurons = 1000; % Must be multiples of 5 to satisfy ratio, if using 1:4 ratio. Every 1st neuron is Inhibitory
@@ -239,14 +240,19 @@ end
 
 % Excitatory Axon Generation
 for i = 1:params.numneurons
+
     if neuron.type(i) == 1
         neuron.direction(i) = motif.orientation(neuron.motif(i)); % Sets stored value for inhibitory axon direction
+        re = [0,0,0,0]; re(neuron.direction(i)) = 1;
+        
     elseif neuron.type(i) == 2 % Creating a new axon matrix for Excitatory neurons. Must be made one at a time to calculate current effect on every neuron
-        neuron.direction(i) = randi([1,4],1,1); % 1 = x value down (left),2 = Y value down (up), 3 = X value up (right), 4 = Y value up (down)
+        neuron.direction(i) = randi([1,4],1,1); % 1 = x value down (left),2 = Y value down (down), 3 = X value up (right), 4 = Y value up (up)
         re = [0,0,0,0]; re(neuron.direction(i)) = 1; % Random element selection to choose orientation of axon
         rl = randi([50+params.neuron.radii,480+params.neuron.radii],1); % Random length of axon + params.neuron.radii
-        xc = [neuron.x(i)+(re(3)*params.neuron.radii)-(re(1)*params.neuron.radii) neuron.x(i)+(re(3)*rl)-(re(1)*rl)]; % x coordinates of neuron, axon point
-        yc = [neuron.y(i)+(re(4)*params.neuron.radii)-(re(2)*params.neuron.radii) neuron.y(i)+(re(4)*rl)-(re(2)*rl)]; % y coordinates of neuron, axon point
+        
+        % Determine Axon start/end locations
+        xc = [neuron.x(i)+(re(3)*params.neuron.radii)-(re(1)*params.neuron.radii) neuron.x(i)+(re(3)*rl)-(re(1)*rl)]; % x coordinates of neuron, axon hillock
+        yc = [neuron.y(i)+(re(4)*params.neuron.radii)-(re(2)*params.neuron.radii) neuron.y(i)+(re(4)*rl)-(re(2)*rl)]; % y coordinates of neuron, axon hillock
         if xc(2) <= 0 % Simple filter Makes sure the axon end does not go out of bounds in x
             xc(2) = 1;
         elseif xc(2) >= params.sx
@@ -279,6 +285,64 @@ for i = 1:params.numneurons
     neuron.indices(i).soma = find(singlepop == 1);
 end
 
+% Determine axon direction angle
+Axon_Direction_Theta = zeros(params.numneurons,1);
+for i = 1:params.numneurons
+    if neuron.direction(i) == 1 %(left = 180 degrees)
+        Axon_Direction_Theta(i) = 180;
+    elseif neuron.direction(i) == 2 % (up = 90 degrees)
+        Axon_Direction_Theta(i) = 270;
+    elseif neuron.direction(i) == 3 % (right = 0 or 360 degrees)
+        Axon_Direction_Theta(i) = 0;
+    elseif neuron.direction(i) == 4 % (down, = -90 or 270 degrees)
+        Axon_Direction_Theta(i) = 90;
+    end
+end
+
+% Neuron Membrane Indices
+for i = 1:params.numneurons
+    
+    % Determine membrane locations
+    theta = linspace(0, 360, 4*pi*params.neuron.radii);
+    x = neuron.x(i) + params.neuron.radii * cosd(theta);
+    y = neuron.y(i) + params.neuron.radii * sind(theta);
+    xy = round([x', y']);
+    xy = unique(xy, 'rows');
+    ind = zeros(length(xy),1); % initialize
+    for ii = 1:length(xy)
+        ind(ii) = sub2ind([params.sy params.sx],xy(ii,1),xy(ii,2));
+    end
+    neuron.indices(i).membrane = ind; % Store membrane indices
+    
+    % Determine Axon Hillock
+    neuron.direction(i); % 1 = 180deg, 2=90deg, 3=0deg,4=270deg
+    xy2 = [neuron.x(i) + params.neuron.radii * cosd(Axon_Direction_Theta(i)) neuron.y(i) + params.neuron.radii * sind(Axon_Direction_Theta(i))];
+    p1 = find(xy(:,1) == xy2(1) & xy(:,2) == xy2(2)); % center point of axon hillock on membrane
+    p2 = zeros(1+params.axonhillockradii*2,2); % Initialize axon hillock point storage
+    p2(1,:) = xy(p1,:);
+    % find distance to p1
+    %select x closest to p1 as radius
+    dist = [];
+    for ii = 1:length(xy)
+        dist(ii) = sqrt((p2(1,1)-xy(ii,1))^2 + (p2(1,2)-xy(ii,2))^2); % Distance to center of axon hillock
+    end
+    dist(dist==0) = nan;
+    k = 2;
+    for ii = 1:params.axonhillockradii
+        p1 = find(dist == min(dist));
+        p2(k,:) = xy(p1(1),:); k = k+1;
+        p2(k,:) = xy(p1(2),:); k = k+1;
+    end
+    
+    ind2 = zeros(length(p2),1); % Initialize
+    for ii = 1:length(p2)
+        ind2(ii) = sub2ind([params.sy params.sx],xy(ii,1),xy(ii,2));
+    end
+    neuron.indices(i).axonhillock = ind2;
+    
+    % Clean membrane indices of axon hillock indices
+    neuron.indices(i).membrane = setdiff(neuron.indices(i).membrane, neuron.indices(i).axonhillock);
+end
 
 clear('singlepop');
 %% Stimulation Locations Matrix
@@ -315,20 +379,22 @@ load('lightspread.mat');
 neuron.io.soma = zeros(params.numneurons,length(electrode.x)); % Stores 1/r^2 area component of Somas
 neuron.io.axon = zeros(params.numneurons,length(electrode.x)); % Stores 1/r^2 area component of Axons
 neuron.oo.soma = zeros(params.numneurons,length(electrode.x)); % Stores light stimulus area summation component of Somas
+
 lightspread.calc = [];
 for i = 1:params.numneurons
 
     for j = 1:length(electrode.x)
         
-        x1 = Stim_Distance_Map(j,neuron.indices(i).soma); % Soma Distance Values in mm
+        x1a = Stim_Distance_Map(j,neuron.indices(i).axonhillock); % neuron axon hillock Distance Values in mm
+        x1b = Stim_Distance_Map(j,neuron.indices(i).membrane); % neuron membrane Distance Values in mm
         x2 = Stim_Distance_Map(j,neuron.indices(i).axon); % Axon Distance Values in mm
 
         % Sanity check : r = 1.01:0.01:5; plot(r,1./r.^2); % Electrical
         % field as a function of distance
-        neuron.io.soma(i,j) = sum(sum(1./(x1+1).^2))/length(x1); % Mean 1/(r+1)^2 area component of soma. Units nA/mm^2
+        neuron.io.soma(i,j) = sum(sum(1./(x1a+1).^2))/length(x1a) + (sum(sum(1./(x1b+1).^2))/length(x1b))/length(x1b); % Mean 1/(r+1)^2 area component of cell. Units nA/mm^2
         neuron.io.axon(i,j) = sum(sum(1./(x2+1).^2))/length(x2); % Mean 1/(r+1)^2 area component of axon. Units nA/mm^2
         
-        lightspread.calc = lightspread.averaged.a.*((x1*1000).^lightspread.averaged.b); % Light Intensity Calculation in um
+        lightspread.calc = lightspread.averaged.a.*(([x1a x1b]*1000).^lightspread.averaged.b); % Light Intensity Calculation in um
         lightspread.calc(lightspread.calc < 0) = 0; % Should not happen, debugging
         neuron.oo.soma(i,j) = sum(sum(lightspread.calc));
         
@@ -460,18 +526,6 @@ population.motion.indices = find(population.motion.map > 0);
 % to become excited.
 
 neuron.dirmult = zeros(params.numneurons,length(electrode.x));
-Axon_Direction_Theta = zeros(params.numneurons,1);
-for i = 1:params.numneurons
-    if neuron.direction(i) == 1 %(left = 180 degrees)
-        Axon_Direction_Theta(i) = 180;
-    elseif neuron.direction(i) == 2 % (up = 90 degrees)
-        Axon_Direction_Theta(i) = 90;
-    elseif neuron.direction(i) == 3 % (right = 0 degrees)
-        Axon_Direction_Theta(i) = 0;
-    elseif neuron.direction(i) == 4 % (down, = -90 or 270 degrees)
-        Axon_Direction_Theta(i) = -90;
-    end
-end
 
 % Calculate angle from axon hillic to each electrode
 

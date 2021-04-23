@@ -10,45 +10,45 @@ load('InitialConditionsFull.mat');
 % threshold.c = thresholdfun(output,neuron,units,n,x);
 % load('SEoutputo.mat');
 % threshold.o = thresholdfun(output,neuron,units,n,x);
-params.optofactor = 1000;
-threshold.c = zeros(1,100)+100;
-threshold.o = zeros(1,100)+0.1*params.optofactor;
+
+threshold.c = (zeros(1,100)+100);
+threshold.o = (zeros(1,100)+100);
 
 %Define parameters
 neuron.lambda = zeros(params.numneurons,1);
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
-NumTrials = 20;
+NumTrials = 50;
 neuron.IC = 0;
 CI = 95;
-
-%neuron.lambdamod = lamdacombinedfun(neuron,zeros(size(neuron.type)),zeros(size(neuron.type)),1); % FR of neurons before any stimulation, includes synaptic connections
-%neuron.lambdathreshold = lambdathresholdfinder(neuron,CI); % Thresholds that each neuron must reach to be 'activated'
 
 parfor i = 1:NumTrials
     lambdamod(i,:) = IntegrateAndFire(neuron,params,zeros(params.numneurons,1)); % FR of neurons before any stimulation, includes synaptic connections
 end
-neuron.lambdamod = mean(lambdamod,1)';
+neuron.lambdamod = mean(lambdamod,1);
+
+neuron.currentset = 0.15/100;
+neuron.optoset = 0.005/100;
 
 %% Matlab PSO options
-lambdatype = 3;
+lambdatype = 1;
 
 if any(lambdatype == [1 5])
     nvars = length(electrode.x);
     lb = zeros(1,nvars);
-    ub = [threshold.c]*.4;
+    ub = [threshold.c];
 elseif any(lambdatype == [2 6])
     nvars = length(electrode.x);
     lb = zeros(1,nvars);
-    ub = [threshold.o]*.4;
+    ub = [threshold.o];
 elseif lambdatype == 3
     nvars = length(electrode.x)*2;
     lb = zeros(1,nvars);
-    ub = [threshold.c*0.4 threshold.o*0.4];
+    ub = [threshold.c threshold.o];
 elseif any(lambdatype == [4 7])
-    nvars = length(electrode.x)*2;
+    nvars = length(electrode.x);
     lb = zeros(1,nvars);
-    ub = [threshold.c*0.4 threshold.o*0.4];
+    ub = [threshold.c threshold.o];
 end
 
 fun = @(electrodestim) MotionRatioCombined(electrodestim,neuron,params,lambdatype);
@@ -429,14 +429,14 @@ function z = MotionRatioCombined(electrodestim,neuron,params,lambdatype) % Cost
 % ec = all electrode variables
 
 if lambdatype == 1
-    ec = electrodestim; % Electrical stimulation values
-    eo = zeros(length(electrodestim),1);
+    ec = neuron.currentset.*electrodestim; % Electrical stimulation values
+    eo = neuron.optoset.*zeros(length(electrodestim),1);
 elseif lambdatype == 2
-    ec = zeros(length(electrodestim),1);
-    eo = electrodestim/params.optofactor; % Electrode optical stimulation value
+    ec = neuron.currentset.*zeros(length(electrodestim),1);
+    eo = neuron.optoset.*electrodestim; % Electrode optical stimulation value
 else
-    ec = electrodestim(1:100);
-    eo = electrodestim(101:200)/params.optofactor; % Electrode optical stimulation value
+    ec = neuron.currentset.*electrodestim(1:100);
+    eo = neuron.optoset.*electrodestim(101:200); % Electrode optical stimulation value
 end
 
 % Electrical / Optical Field Summation
@@ -448,7 +448,7 @@ Il_Soma_Neurons = zeros(params.numneurons,1); % Initialize luminous intensity
 
 for i = 1:length(ec) % Summation of current for every neuron component by every electrode & its corresponding current
     Ie_Axon_Neurons = Ie_Axon_Neurons + neuron.io.axon(:,ElectrodeNo(i)).*ec(i);
-    Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*ec(i).*neuron.dirmult(:,i);
+    Ie_Soma_Neurons = Ie_Soma_Neurons + neuron.io.soma(:,ElectrodeNo(i)).*ec(i);
     Il_Soma_Neurons = Il_Soma_Neurons + neuron.oo.soma(:,ElectrodeNo(i)).*eo(i);
 end
 

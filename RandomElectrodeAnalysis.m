@@ -1,6 +1,6 @@
 clearvars; clc; close all;
-load('InitialConditionsFullB.mat')
-set(groot,'defaultLineLineWidth',2.0)
+load('InitialConditionsFull.mat')
+set(groot,'defaultLineLineWidth',4.0)
 set(0,'defaultAxesFontSize',14)
 set(0,'defaultAxesLineWidth',3)
 
@@ -11,15 +11,15 @@ I0 = 100;
 %% Stimulation Locations
 
 if Stim_Center == 1
-    ElectrodeDist = sqrt((sx/2-electrode.x).^2 + (sy/2-electrode.y).^2);
+    ElectrodeDist = sqrt((params.sx/2-electrode.x).^2 + (params.sy/2-electrode.y).^2);
     ElectrodeNo = find(ElectrodeDist == min(ElectrodeDist),1); % Finds the closest electrode to the center, stimulate only this electrode
 else
     ElectrodeNo = randperm(100,Num_Stim);
 end
 
-Stim_Loc =  zeros(sx, sy);
+Stim_Loc =  zeros(params.sx, params.sy);
 for i = 1:length(ElectrodeNo)
-Stim_Loc(electrode.y(ElectrodeNo(i))-electrode.radii:electrode.y(ElectrodeNo(i))+electrode.radii,electrode.x(ElectrodeNo(i))-electrode.radii:electrode.x(ElectrodeNo(i))+electrode.radii)  = 1;
+Stim_Loc(electrode.y(ElectrodeNo(i))-params.electrode.radii:electrode.y(ElectrodeNo(i))+params.electrode.radii,electrode.x(ElectrodeNo(i))-params.electrode.radii:electrode.x(ElectrodeNo(i))+params.electrode.radii)  = 1;
 end
 Ed = bwdist(Stim_Loc); % Calculates the Euclidean distance from stim points. Sets origin (stim point) to 0
 Stim_Distance = Stim_Loc + Ed; % Distance of every square to the nearest stim location
@@ -38,24 +38,24 @@ NumSteps = 1/dt; % Number of steps/bins in time t_total
 FS_Lambda = 40; % Fast Spiking Neurons, Inhibitory
 RS_Lambda = 20; % Regular Spiking Neurons, Excitory
 
-Lambda_Hat = zeros(NumNeurons,1); % Probability change due to current injection
-Lambda = zeros(NumNeurons,1);
+Lambda_Hat = zeros(params.numneurons,1); % Probability change due to current injection
+Lambda = zeros(params.numneurons,1);
 
-for i = 1:NumNeurons
+for i = 1:params.numneurons
     if neuron.type(i) == 1 % If it is an FS (Inhibitory)
         Lambda_Hat(i) = FS_Lambda + (FS_Lambda * Ie_Soma_Axon_Neurons(i)); % Lambda_Hat firing rate based off microstimulation
         Lambda(i) = FS_Lambda; % Lambda regular, no microstimulation
     end
 end
 
-Inhibitory_Effect = zeros(NumMotifs,1);
-Inhibitory_Effect_Lambda = zeros(NumMotifs,1);
-for i = 1:NumMotifs
+Inhibitory_Effect = zeros(params.NumMotifs,1);
+Inhibitory_Effect_Lambda = zeros(params.NumMotifs,1);
+for i = 1:params.NumMotifs
     Inhibitory_Effect(i) = Lambda_Hat(neuron.inhibitory(i)).*Inhibitory_Factor; % Calculates the inhibitory effect from FS firing on RS neurons per motif
     Inhibitory_Effect_Lambda = FS_Lambda*Inhibitory_Factor;
 end
 
-for i = 1:NumNeurons % Applying inhibitory factor to firing rates of RS Neurons
+for i = 1:params.numneurons % Applying inhibitory factor to firing rates of RS Neurons
     if neuron.type(i) == 2
         Lambda_Hat(i) = (RS_Lambda + (RS_Lambda * Ie_Soma_Axon_Neurons(i))) - Inhibitory_Effect(neuron.motif(i)); % Lambda hat firing rate based off stimulation & Inhibitory effect
         Lambda(i) = RS_Lambda - Inhibitory_Effect_Lambda; % Lambda regular, no microstimulation
@@ -75,7 +75,7 @@ Stimulated_Neurons = find(neuron.motif == Stimulated_Motifs(1));
     
 NumTrials = 1000;
 Oscillatory_Behavior = 1;
-for i = 1:NumNeurons
+for i = 1:params.numneurons
     if intersect(neuron.oscillatory,i) == i & Oscillatory_Behavior == 1 % If the neuron has oscillatory behavior then use:
         Lambda_Spikes = Oscillatory_PoissonGen(Lambda(i), dt, NumTrials);
     else % Otherwise use the simple function:
@@ -84,9 +84,9 @@ for i = 1:NumNeurons
     Lambda_Hat_Spikes_Mean(i) =  mean(Lambda_Spikes);
 end
 
-Neuron_Pop_Spikes_Lambda = zeros(sx, sy);
-Neuron_Pop_Spikes_Diff = zeros(sx, sy);
-for i = 1:NumNeurons
+Neuron_Pop_Spikes_Lambda = zeros(params.sx, params.sy);
+Neuron_Pop_Spikes_Diff = zeros(params.sx, params.sy);
+for i = 1:params.numneurons
     Neuron_Pop_Spikes_Lambda(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = Lambda_Spikes(i);
     Neuron_Pop_Spikes_Diff(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = Lambda_Hat_Spikes(i)-Lambda_Spikes(i);
 end
@@ -94,7 +94,7 @@ end
 %% Poisson Spiking Model pt 2 - Lambda Hat (Stimulated)
 NumTrials = 1000;
 Oscillatory_Behavior = 1;
-for i = 1:NumNeurons
+for i = 1:params.numneurons
     if intersect(neuron.oscillatory,i) == i & Oscillatory_Behavior == 1 % If the neuron has oscillatory behavior then use:
         Lambda_Hat_Spikes = Oscillatory_PoissonGen(Lambda_Hat(i), dt, NumTrials);
     else % Otherwise use the simple function:
@@ -104,7 +104,7 @@ for i = 1:NumNeurons
 end
 
 
-Neuron_Pop_Spikes = zeros(sx, sy);
+Neuron_Pop_Spikes = zeros(params.sx, params.sy);
 for i = 1:length(neuron.x)
     Neuron_Pop_Spikes(neuron.y(i)-neuron.radii:neuron.y(i)+neuron.radii, neuron.x(i)-neuron.radii:neuron.x(i)+neuron.radii) = Lambda_Hat_Spikes_Mean(i);
 end
@@ -115,12 +115,12 @@ figure; set(gcf,'Position',[100 100 800 700]);
 map = [1 1 1; 0 0 0]; colormap(map);
 imagesc(1./Stim_Distance); title('Active Electrode Locations'); xlabel('X Position (mm)'); ylabel('Y Position (mm)');
 
-[y1,x1] = ind2sub([sx sy],population.inhibitory.indices); % Inhibitory
-[y2,x2] = ind2sub([sx sy],population.excitatory.indices); % Non-Motion Excitatory
-[y3,x3] = ind2sub([sx sy],population.motion.indices); % Motion
-[y4,x4] = ind2sub([sx sy],population.axon.indices); % Axons
+[y1,x1] = ind2sub([params.sx params.sy],population.inhibitory.indices); % Inhibitory
+[y2,x2] = ind2sub([params.sx params.sy],population.excitatory.indices); % Non-Motion Excitatory
+[y3,x3] = ind2sub([params.sx params.sy],population.motion.indices); % Motion
+[y4,x4] = ind2sub([params.sx params.sy],population.axon.indices); % Axons
 
-population.empty = zeros(sx,sy);
+population.empty = zeros(params.sx,params.sy);
 figure; set(gcf,'Position',[100 100 800 700]); 
 map = [1 1 1];
 imagesc(population.empty); colormap(map);
@@ -141,8 +141,8 @@ c2 = .7;
 map = [map ; map(2,1:3)*c1 ; map(3,1:3)*c1 ; map(4,1:3)*c1 ; map(5,1:3)*c1 ; map(6,1:3)*c1];
 map = [map ; 1 1 1 ; map(3,1:3)*c2 ; map(4,1:3)*c2 ; map(5,1:3)*c2 ; map(6,1:3)*c2];
 
-population.pads.map = zeros(sx,sy);
-for i = 1:NumPads
+population.pads.map = zeros(params.sx,params.sy);
+for i = 1:params.numpads
 population.pads.map(pad.start.y(i):pad.end.y(i),pad.start.x(i):pad.end.x(i)) = i;
 end
 
@@ -153,7 +153,7 @@ plot(electrode.x,electrode.y,'.','color','black');
 
 % Neuron Connections
 
-% figure; set(gcf,'Position',[100 100 800 700]); imagesc(population.pads.map); colormap(map); title('Neuron Synaptic Connections'); % Color coded map representing different pads
+% figure; set(gcf,'Position',[100 100 800 700]); imagesc(population.pads.map); colormap(map); title('Neuron params.synaptic Connections'); % Color coded map representing different pads
 % hold on
 % for i = 1:length(Neuron_Connected)
 %         x1 = neuron.x(Neuron_Connected(i,1)); x2 = neuron.x(Neuron_Connected(i,2));

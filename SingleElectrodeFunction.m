@@ -5,30 +5,30 @@ clearvars; clc;
 % the center electrode.
 
 % Features
-Directional_Current_Modifier = 1; % if set =1 & enabled, multiplier is applied to the soma depending on axon-hillock location
 axonswitch = 1; % if 0, then no axon is added. If 1, then axon is used in summation.
 neuronweights = 1; % If neuron weights apply, leave as 1.
+inhibitoryweights = 1; % If neuron inhibitory weights apply, leave as 1.
 
 % Apply Features
-load('InitialConditionsFull.mat') % 4:1 Excitatory to inhibitory ratio
-if Directional_Current_Modifier == 0 % Directionality component to current summation (Based on axon hilic)
-    neuron.dirmult(:,:) = 1;
-end
+load('InitialConditionsFull.mat')
 if neuronweights == 0
     neuron.weight.matrix = zeros(params.numneurons,params.numneurons);
 end
+if inhibitoryweights == 0
+    neuron.weight.matrix(neuron.weight.matrix==neuron.weight.WEI) = 0; % Inhibitory onto excitatory connections will = 0
+end
 
 % Parameters
-h = 10; % Steps
-numrepeats = 2; % Number of overall repeats
-NumTrials = 100;
+h = 48; % Steps
+numrepeats = 1; % Number of overall repeats
+NumTrials = 50;
 bpct = 05; % Bottom Percentile for Rheobase calculation. 50 for 50%, 05 for 95% CI.
 neuron.lambda = zeros(params.numneurons,1);
 neuron.lambda(neuron.type == 1) = 40; % neuron.lambda for inhibitory Neurons
 neuron.lambda(neuron.type == 2) = 20; % neuron.lambda for Excitatory Neurons
 
 % Calculations
-%neuron.lambdamod = lamdacombinedfun(neuron,params,zeros(size(neuron.type)),zeros(size(neuron.type)),1); % FR of neurons before any stimulation, includes synaptic connections
+
 parfor i = 1:NumTrials
     lambdamod(i,:) = IntegrateAndFire(neuron,params,zeros(params.numneurons,1)); % FR of neurons before any stimulation, includes synaptic connections
 end
@@ -48,16 +48,16 @@ for jj = 1:numrepeats
         
         if lambdatype == 1
             unitsmin = 0;
-            unitsmax = 40;
+            unitsmax = 20;
         else
             unitsmin = 0;
-            unitsmax = 0.005;
+            unitsmax = 0.015;
         end
         I0 = linspace(unitsmin,unitsmax,h);
         
         for ii = 1:length(I0)
             
-            Ie_Neurons = neuron.io.soma(:,ElectrodeNo).*neuron.dirmult(:,ElectrodeNo).*I0(ii) + neuron.io.axon(:,ElectrodeNo).*I0(ii).*axonswitch; % Summation of current directly from stimulus + backpropogated up by axons. AU Current
+            Ie_Neurons = neuron.io.soma(:,ElectrodeNo).*I0(ii) + neuron.io.axon(:,ElectrodeNo).*I0(ii).*axonswitch; % Summation of current directly from stimulus + backpropogated up by axons. AU Current
             Il_Neurons = neuron.oo.soma(:,ElectrodeNo).*I0(ii); % Summation of current directly from stimulus. AU irridance
             
             % Calculate neuron.lambda Change
