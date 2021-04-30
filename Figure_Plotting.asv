@@ -844,11 +844,9 @@ hold off
 % f = polyfit(1:length(p2),p2,1);
 % slope = f(1)
 
-x1 = mean(stepsol.opto.motion)';
-x2 = mean(stepsol.opto.nonmotion)';
-[mudiff,slopediff] = distdiff(x1,x2)
-%x = mean(squeeze(Cumulative_Activation(5,:,:)));
-%[mu,slope] = cdffit(x')
+%[mudiff,sigmadiff] = distdiff(mean(stepsol.current.excitatory)',mean(stepsol.current.inhibitory)');
+x = mean(squeeze(Cumulative_Activation(1,:,:)));
+[mu,slope] = cdffit(x')
 %% Figure 6B - Optimization
 % 
 % 6. Cloud figures
