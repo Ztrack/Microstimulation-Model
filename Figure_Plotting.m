@@ -3,9 +3,9 @@
 clearvars; clc;
 load('InitialConditionsFull.mat');
 load('solrb1.mat');
-set(groot,'defaultLineLineWidth',4.0)
-set(0,'defaultAxesFontSize',14)
-set(0,'defaultAxesLineWidth',3)
+set(groot,'defaultLineLineWidth',4.0);
+set(0,'defaultAxesFontSize',14);
+set(0,'defaultAxesLineWidth',3);
 %solrb.o1(2,:) = solrb.o1(1,:)+solrb.o1(1,:)*.02; solrb.e1(2,:) = solrb.e1(1,:)+solrb.e1(1,:)*.02;
 %% Calculations
 for i = 1:params.NumMotifs
@@ -71,6 +71,13 @@ startopto = solrb.o.I0(find(stepsol.opto.all(1,:) > 5,1));
 [y3,x3] = ind2sub([params.sx params.sy],population.excitatory.indices); % Non-Motion Excitatory
 [y4,x4] = ind2sub([params.sx params.sy],population.motion.indices); % Motion
 population.empty = zeros(params.sx,params.sy);
+[~,motifsort] = sort(sqrt((params.sx/2-neuron.x).^2 + (params.sy/2-neuron.y).^2)); % Sort motifs by distance
+for i = 1:params.NumMotifs
+    if sum(intersect(neuron.motion.number,find(neuron.motif == motifsort(i)))) > 0 % If it has at least 1 motion-tuned neuron
+        center_motif = motifsort(i); % Store as motif of interest
+        break
+    end
+end
 
 % Figure 1a - View of entire model
 figure; set(gcf,'Position',[100 100 800 700]); map = [1 1 1]; set(gca,'FontWeight','bold');
@@ -80,23 +87,16 @@ plot(x2,y2,'.','color','red'); hold on;
 plot(x3,y3,'.','color','Blue'); hold on;
 plot(x4,y4,'.','color','Green'); hold on;
 axis square;
-size = 500; % Size from center to plot, in um to focus on
+sizebox = 500; % sizebox from center to plot, in um to focus on
 y = motif.center.x(center_motif);
 x = motif.center.y(center_motif);
-drawSquare(params,x,y,size);
+drawSquare(params,x,y,sizebox);
 %title('Neural Population'); xlabel('X Position (mm)'); ylabel('Y Position (mm)'); 
 legend('','Inhibitory Cell','Excitatory Cell Non-Motion Tuned','Excitatory Motion Tuned',''); legend('location','northwestoutside');
 set(gca,'xtick',[]); set(gca,'xticklabel',[]);
 set(gca,'ytick',[]); set(gca,'yticklabel',[]);
 
 % Figure 1b - Zoomed in view of model
-[~,motifsort] = sort(sqrt((params.sx/2-neuron.x).^2 + (params.sy/2-neuron.y).^2)); % Sort motifs by distance
-for i = 1:params.NumMotifs
-    if sum(intersect(neuron.motion.number,find(neuron.motif == motifsort(i)))) > 0 % If it has at least 1 motion-tuned neuron
-        center_motif = motifsort(i); % Store as motif of interest
-        break
-    end
-end
 
 figure; set(gcf,'Position',[100 100 800 700]); map = [1 1 1];
 imagesc(population.empty); colormap(map); hold on;
@@ -109,12 +109,12 @@ plot(x4,y4,'.','color','Green'); hold on;
 set(gca,'xtick',[]); set(gca,'xticklabel',[]);
 set(gca,'ytick',[]); set(gca,'yticklabel',[]);
 axis square;
-xlim([y-size y+size]);
-ylim([x-size x+size]);
+xlim([y-sizebox y+sizebox]);
+ylim([x-sizebox x+sizebox]);
  
 % Figure 1c - View of motif
-size = 100; % Size from center to plot, in um
-drawSquare(params,x,y,size);
+sizebox = 100; % sizebox from center to plot, in um
+drawSquare(params,x,y,sizebox);
 
 figure; set(gcf,'Position',[100 100 800 700]); map = [1 1 1];
 imagesc(population.empty); colormap(map); hold on;
@@ -127,8 +127,8 @@ plot(x4,y4,'.','color','Green'); hold on;
 set(gca,'xtick',[]); set(gca,'xticklabel',[]);
 set(gca,'ytick',[]); set(gca,'yticklabel',[]);
 axis square;
-xlim([y-size y+size]);
-ylim([x-size x+size]);
+xlim([y-sizebox y+sizebox]);
+ylim([x-sizebox x+sizebox]);
 
 %% Figure 2 - Optogenetic & ICMS Activation
 
@@ -230,6 +230,8 @@ hleg = legend('location','northeastoutside'); legend([append(legendx,'\mum')]); 
 set(gca,'FontWeight','bold');
 axis square;
 %xlim([0 currentstop/h]);
+
+% Compare pad distributions
 
 % Figure 2B Part 2
 subplot(2,1,2);
@@ -485,7 +487,12 @@ title('Effects of Optogenetic Stimulation on Axons'); xlabel('Luminous Intensity
 hleg = legend('location','northeastoutside'); legend('0-45\circ','','46-90\circ','','91-134\circ','','135-180\circ'); htitle = get(hleg,'Title'); set(htitle,'String','Angle to Electrode');
 axis square;
 set(gca,'FontWeight','bold');
-
+Cumulative_Activation(1,:,:) = stepsol.opto.x1;
+Cumulative_Activation(2,:,:) = stepsol.opto.x2;
+Cumulative_Activation(3,:,:) = stepsol.opto.x3;
+Cumulative_Activation(4,:,:) = stepsol.opto.x4;
+[mean,slope] = comparedist(Cumulative_Activation)
+%%
 % Figure 3C - Difference plot
 stepsol.current.xdiff = abs(stepsol.current.x1-stepsol.current.x4);
 options.x_axis = solrb.e.I0;
@@ -830,25 +837,73 @@ hold off
 %% fitdist
 %data.e1.mean = fitdist(mean(solrb.e1)','Normal');
 %data.o1.mean = fitdist(mean(solrb.o1)','Normal');
-%fitmethis(mean(solrb.e1))
 
-% for i = 1:numrepeats
-%     f( = fitdist(dist1(1,:)','Normal');
-% 
-% end
-% x=stepsol.current.excitatory(1,:)';
-% x=stepsol.current.inhibitory(1,:)';
-% %x=dist1(1,:)';
-% p1 = fitdist(x,'Normal');
-% p2 = normcdf(x,p1.mu,p1.sigma);
-% f = polyfit(1:length(p2),p2,1);
-% slope = f(1)
+% Compare pad distributions
+clear x1 x2 x3 mu slope
+for i = 1:size(Cumulative_Activation,1) % Finger pad #
+    x1 = squeeze(Cumulative_Activation(i,:,:))';
+    for j = 1:size(x1,2)
+        [mu(i,j),slope(i,j)] = cdffit(x1(:,j));
+    end
+end
+for i = 1:size(Cumulative_Activation,1) % Finger pad # dist 1
+    for j = 1:size(Cumulative_Activation,1)
+        if i == j
+            x2(i,j) = nan;
+            x3(i,j) = nan;
+        else
+            x2(i,j) = sum(mu(i,:)<mu(j,:))/length(mu(i,:)); % How many times is dist 1 greater than dist 2?
+            x3(i,j) = sum(slope(i,:)<slope(j,:))/length(slope(i,:));
+        end
+    end
+    
+end
 
+
+%% Motion vs Nonmotion cdf compare
 x1 = mean(stepsol.opto.motion)';
 x2 = mean(stepsol.opto.nonmotion)';
-[mudiff,slopediff] = distdiff(x1,x2)
-%x = mean(squeeze(Cumulative_Activation(5,:,:)));
-%[mu,slope] = cdffit(x')
+x3 = mean(stepsol.current.motion)';
+x4 = mean(stepsol.current.nonmotion)';
+[mudiff,slopediff] = distdiff(x1,x2);
+
+%%
+figure;
+x1 = mean(stepsol.current.motion)';
+p1 = fitdist(x1,'Normal')
+x=1:150; A=3;
+y=A*exp(-(x-p1.mu).^2/(2*p1.sigma^2))+rand(size(x))*0.3;
+plot(x,y); hold on;
+
+p1cdf = normcdf(x1,p1.mu,p1.sigma);
+f = polyfit(1:length(p1cdf),p1cdf,1);
+sigma = f(1);
+mu = normcdf(median(x1),p1.mu,p1.sigma);
+y=A*exp(-(x-mu).^2/(2*sigma^2))+rand(size(x))*0.3;
+plot(x,y);
+
+%%
+clear x1 x2 x3 mu slope
+for i = 1:size(Cumulative_Activation,1)
+    x1 = mean(squeeze(Cumulative_Activation(i,:,:)))';
+    [mu(i),slope(i)] = cdffit(x1);
+end
+x1 = mean(squeeze(Cumulative_Activation(i,:,:)))';
+x2 = mean(squeeze(Cumulative_Activation(2,:,:)))';
+x3 = mean(squeeze(Cumulative_Activation(3,:,:)))';
+x4 = mean(squeeze(Cumulative_Activation(4,:,:)))';
+
+x1=x1(x1>20);
+x2=x2(x2>20);
+x3=x3(x3>20);
+x4=x4(x4>20);
+
+%%
+
+x1 = mean(stepsol.current.inhibitory);
+x2 = mean(stepsol.current.excitatory);
+x3 = mean(stepsol.opto.inhibitory);
+x4 = mean(stepsol.opto.excitatory);
 %% Figure 6B - Optimization
 % 
 % 6. Cloud figures
@@ -862,14 +917,20 @@ x2 = mean(stepsol.opto.nonmotion)';
 
 
 %% Supplementary 1: SA1. SA,RA,Mixed neuron figure update
+
+
 %% Functions
+
 function [mu,slope] = cdffit(x1)
 p1 = fitdist(x1,'Normal');
-p1cdf = normcdf(x1,p1.mu,p1.sigma);
-f = polyfit(1:length(p1cdf),p1cdf,1);
-slope = f(1);
-mu = normcdf(median(x1),p1.mu,p1.sigma);
+%p1cdf = normcdf(x1,p1.mu,p1.sigma);
+%f = polyfit(1:length(p1cdf),p1cdf,1);
+%slope = f(1);
+%mu = normcdf(median(x1),p1.mu,p1.sigma);
+mu = p1.mu;
+slope = p1.sigma;
 end
+
 function [mudiff,sigmadiff] = distdiff(x1,x2)
 p1 = fitdist(x1,'Normal');
 p1cdf = normcdf(x1,p1.mu,p1.sigma);
@@ -885,6 +946,28 @@ mu2 = normcdf(median(x2),p2.mu,p2.sigma);
 
 mudiff = mu2-mu1;
 sigmadiff = slope2-slope1;
+end
+
+function [x2,x3] = comparedist(Cumulative_Activation)
+% Compare axon distributions
+
+for i = 1:size(Cumulative_Activation,1) % Finger pad #
+    x1 = squeeze(Cumulative_Activation(i,:,:))';
+    for j = 1:size(x1,2)
+        [mu(i,j),slope(i,j)] = cdffit(x1(:,j));
+    end
+end
+for i = 1:size(Cumulative_Activation,1) % Finger pad # dist 1
+    for j = 1:size(Cumulative_Activation,1)
+        if i == j
+            x2(i,j) = nan;
+            x3(i,j) = nan;
+        else
+            x2(i,j) = sum(mu(i,:)<mu(j,:))/length(mu(i,:)); % How many times is dist 1 greater than dist 2?
+            x3(i,j) = sum(slope(i,:)<slope(j,:))/length(slope(i,:));
+        end
+    end
+end
 end
 function plot_areaerrorbar(data, options)
     options.color_line = options.color_area;
@@ -931,6 +1014,7 @@ function plot_areaerrorbar(data, options)
     end
 
 end
+
 function imageReturn = drawSquare(params,x,y,size)
     imageReturn = image;
     intensity = 255;
@@ -948,6 +1032,7 @@ function imageReturn = drawSquare(params,x,y,size)
     [yplot,xplot] = ind2sub([params.sx params.sy],population.box.indices); % Motion
     plot(xplot,yplot,'.','color','magenta'); hold on;
 end
+
 function F= fitmethis(data,varargin)
 % FITMETHIS finds best-fitting distribution
 %	F= fitmethis(X) fits all distributions available in MATLAB's function 
@@ -1222,10 +1307,12 @@ if strcmp('on',fig) && isempty(prefdist)
 end
 % End of fitmethis
 end
+
 function y= normalf(x,mu,sigma)
 % Normal function values at x with mean= mu and std= sigma
 y= (1/(sigma*sqrt(2*pi)))* exp(-((x-mu).^2)./(2*sigma^2));
 end
+
 function plotfitdist(data,F,dtype,varargin)
 %PLOTFITDIST plots data and fitted distribution
 % PLOTFITDIST(DATA,F,DTYPE) plots one or more probability density 
