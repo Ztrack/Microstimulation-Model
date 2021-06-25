@@ -185,8 +185,8 @@ while jn<rdpso.nruns %loop for the number of runs
        % Evaluate the total population at the current iteration.
        parfor i = 1:rdpso.n
         [cost(1,i)]=costfunction(pop(i,:),neuron,params,lambdatype,rdpso); % Results in number of pop cost values
-%         a1 = cat(1,a1,a);
-%         b1 = cat(1,b1,b);
+         a1 = cat(1,a1,a);
+         b1 = cat(1,b1,b);
        end
     
        % The following uses equations (10) and (11) in paper no. 1 to update the local or
